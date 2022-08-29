@@ -1,0 +1,8 @@
+// Thinking this would allow > 1 task per task file
+// Which is probably good?  I enjoy it in makefiles since
+// tasks generally aren't overly complicated.
+// Down with too many files.
+
+task "xyz" {
+    command "cargo build"
+}
