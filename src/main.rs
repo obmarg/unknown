@@ -1,3 +1,5 @@
+use std::path::{Path, PathBuf};
+
 mod config;
 
 fn main() {
@@ -19,4 +21,19 @@ fn main() {
     // But depends how slow it actually is to read all these project
     // files.  Probably an over optimisation initially.
     println!("Hello, world!");
+}
+
+fn find_workspace_file() -> Option<PathBuf> {
+    let mut current_path = std::env::current_dir().ok()?;
+
+    while current_path.parent().is_some() {
+        current_path.push("workspace.kdl");
+        if current_path.exists() {
+            return Some(current_path);
+        }
+        current_path.pop();
+        current_path.pop();
+    }
+
+    None
 }
