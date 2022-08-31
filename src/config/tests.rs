@@ -9,5 +9,17 @@ fn test_can_load_project_file() {
         .unwrap()
         .read_to_string(&mut str_data);
 
-    insta::assert_debug_snapshot!(project_from_str(&str_data))
+    insta::assert_debug_snapshot!(project_from_str(&str_data).map_err(|e| miette::Report::new(e.0)))
+}
+
+#[test]
+fn test_can_load_workspace_file() {
+    let mut str_data = String::new();
+    File::open("config-examples/workspace.kdl")
+        .unwrap()
+        .read_to_string(&mut str_data);
+
+    insta::assert_debug_snapshot!(
+        workspace_from_str(&str_data).map_err(|e| miette::Report::new(e.0))
+    )
 }

@@ -1,0 +1,13 @@
+---
+source: src/config/tests.rs
+assertion_line: 22
+expression: "workspace_from_str(&str_data).map_err(|e| miette::Report::new(e.0))"
+---
+Ok(
+    WorkspaceFile {
+        name: "my-workspace",
+        project_paths: [
+            "**",
+        ],
+    },
+)
