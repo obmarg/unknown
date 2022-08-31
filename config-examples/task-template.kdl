@@ -1,0 +1,29 @@
+template "cargo.build" {
+    // Declare that this template requires a variable.
+    variable "project-name"
+
+    // Could specify tags of projects to automatically target
+    // with this template.  This would require either no variables
+    // or some way of specifying variables in a project.
+    targets_tags ""
+
+    // An actual task to add to a project if this template is applied.
+    task "build" {
+    }
+
+    // Potentially there could be many of these tasks in a template.
+
+    // How to deal with naming clashes if a project has > task of
+    // a particular name?  Can a project have multiple tasks of the
+    // same name and running "build" just runs all of them?  Not sure
+    // if this would be a mess, or a useful thing for declaring task deps...
+    // It's harder to define fairly generic task dependencies if you
+    // have to be hyper specific with your task names to avoid clashes.
+    //
+    // Of course I'm not sure how many task clashes will actually come up in
+    // practice.  And the flipside is, do we _neccesarily_want_ to be super
+    // generic with dependencies?  Not sure.
+    //
+    // Would ideally need some way for users to disambiguate which task
+    // they want.
+}
