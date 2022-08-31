@@ -2,7 +2,7 @@ mod project;
 mod tasks;
 mod workspace;
 
-pub use project::ProjectNode;
+pub use project::ProjectFile;
 pub use workspace::WorkspaceFile;
 
 #[cfg(test)]
@@ -17,7 +17,7 @@ impl ParsingError {
     }
 }
 
-pub fn project_from_str(s: &str) -> Result<Vec<ProjectNode>, ParsingError> {
+pub fn project_from_str(s: &str) -> Result<ProjectFile, ParsingError> {
     knuffel::parse("file", s).map_err(ParsingError)
 }
 

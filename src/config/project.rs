@@ -1,6 +1,17 @@
 use super::tasks;
 
 #[derive(knuffel::Decode, Debug)]
+pub struct ProjectFile {
+    #[knuffel(child, unwrap(argument))]
+    pub project: String,
+
+    #[knuffel(child)]
+    pub dependencies: DependencyBlock,
+
+    #[knuffel(child)]
+    pub tasks: tasks::TaskBlock,
+}
+
 pub enum ProjectNode {
     Project(Project),
     Dependencies(DependencyBlock),
