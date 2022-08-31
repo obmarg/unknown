@@ -26,26 +26,14 @@ pub struct Project {
 
 #[derive(knuffel::Decode, Debug)]
 pub struct DependencyBlock {
-    #[knuffel(children(name = "project"))]
-    projects: Vec<ProjectDependency>,
+    #[knuffel(children(name = "project"), unwrap(argument))]
+    pub projects: Vec<String>,
 
-    #[knuffel(children(name = "path"))]
-    paths: Vec<PathDependency>,
+    #[knuffel(children(name = "path"), unwrap(argument))]
+    pub paths: Vec<String>,
 
     #[knuffel(children(name = "import"))]
-    imports: Vec<DependencyImport>,
-}
-
-#[derive(knuffel::Decode, Debug)]
-pub struct ProjectDependency {
-    #[knuffel(argument)]
-    name: String,
-}
-
-#[derive(knuffel::Decode, Debug)]
-pub struct PathDependency {
-    #[knuffel(argument)]
-    path: String,
+    pub imports: Vec<DependencyImport>,
 }
 
 #[derive(knuffel::Decode, Debug)]

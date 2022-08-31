@@ -9,6 +9,7 @@ edition = "2021"
 glob = "0.3.0"
 knuffel = "2.0"
 miette = { version="4.3.0", features=["fancy"] }
+petgraph = "0.6"
 
 [dev-dependencies]
 insta = "1.19"

@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 use crate::config::ParsingError;
 
 mod config;
+mod workspace;
 
 fn main() {
     // So, suboptimal startup approach:
