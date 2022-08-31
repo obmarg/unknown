@@ -1,0 +1,98 @@
+project "my_project"
+// TODO: need a way to do tags.
+
+/*
+// TODO: Do we need a way to specify which files
+// are part of this project?  Could just default to the
+// contents of the current directory
+// Although maybe a way to override it would be useful?
+
+// Question: Should deps be named or paths?
+// Could support both via path="whatever" syntax?
+depend_on "other_project" hard=true
+depend_on path="lib/whatever" hard=true
+
+// Could support 'hard' deps via arguments.
+// Not sure I like the soft/hard distinction too much though.
+// Flexible tagging of deps with the ability to query on those
+// tags would be more flexible.  Maybe easier to understand when
+// users can choose the meaning of the tags?   Or maybe it'll
+// just be more complex...
+depend_on "other_project" hard=true
+
+// Could at a later date support detecting language based deps
+// via something like the following:
+dependencies_from "Cargo.lock"
+dependencies_from "Cargo.toml"
+dependencies_from "package.json"
+dependencies_from "package-lock.json"
+*/
+
+// Guess dependencies could be also be a block?
+dependencies {
+    project "other_project"
+    path "lib/whatever"
+
+    import "Cargo.lock"
+    import "package.json"
+}
+
+// Given how nested this block has ended up looking,
+// I wonder if tasks should just be top-level entities.
+// Would at least knock one annoying indentation off this...
+tasks {
+    // Could maybe have a way to specify a task directory
+    import_dir ".tasks"
+    // and an individual file
+    import_file ".tasks"
+
+    // A way to import a specific template?
+    // These would presumably be named top-level things?
+    // Not sure, needs more thought.
+    import_template "blah-de-blah"
+
+    // And also a way to specify a task inline here.
+    task "build" {
+        // The command to run
+        command "cargo build"
+
+        // Not sure about this syntax, but want a way to specify which
+        // tasks should be run before this, and for what part (if any)
+        // of the project dependency tree
+        dependency task="generate" target="^self"
+
+        // Of course that's where the hard part of the problem is.
+        // Can't determine whether a task needs to be re-run if we don't
+        // know its inputs.  Although tbf, inputs are probably easier than
+        // outputs.
+        // Also, is this hard?  Inputs could default to all files in the
+        // current project, which is not too difficult.
+
+        inputs {
+            // Specify a file as an input
+            file "whatever"
+
+            // Specify a whole directory as an input
+            dir "whatever"
+
+            // Specify a dir with a glob as an input
+            dir "whatever" glob="*"
+
+            // Specify an environment variable as an input
+            // TODO: Think on the name for this one as well.
+            env_var "xyz"
+
+            // Specify the output of a command as an input
+            // TODO: think of a better name for this one.
+            command_output ""
+        }
+
+        // Outputs are a tricky one though aren't they.  Lets think about
+        // them.
+
+        // Outputs shouldn't be required unless I want to start getting into
+        // caching.  tbf outputs could let me avoid recomputing downstreams
+        // which would be nice.  Although I really want to avoid having
+        // that mess
+    }
+}
