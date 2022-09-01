@@ -3,6 +3,7 @@ mod tasks;
 mod workspace;
 
 pub use project::ProjectFile;
+pub use tasks::*;
 pub use workspace::WorkspaceFile;
 
 #[cfg(test)]

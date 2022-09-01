@@ -41,11 +41,26 @@ impl Workspace {
                 dependencies.push(ProjectRef(project.clone()));
             }
 
+            let mut tasks = Vec::new();
+            // TODO: handle task imports
+            for task in &project_file.tasks.tasks {
+                tasks.push(TaskInfo {
+                    name: task.name.clone(),
+                    commands: task.commands.clone(),
+                    dependencies: task
+                        .dependencies
+                        .iter()
+                        .map(TaskDependency::from_config)
+                        .collect(),
+                })
+            }
+
             project_map.insert(
                 project_file.project.clone(),
                 ProjectInfo {
                     name: project_file.project.clone(),
                     dependencies,
+                    tasks,
                 },
             );
         }
@@ -61,7 +76,45 @@ impl Workspace {
 struct ProjectInfo {
     name: String,
     dependencies: Vec<ProjectRef>,
-    // TODO:
+    tasks: Vec<TaskInfo>,
 }
 
 pub struct ProjectRef(String);
+
+// TODO: Think about sticking this in an arc or similar rather than clone
+#[derive(Clone)]
+pub struct TaskInfo {
+    name: String,
+    commands: Vec<String>,
+    dependencies: Vec<TaskDependency>,
+}
+
+#[derive(Clone)]
+struct TaskDependency {
+    task: TaskDependencySpec,
+    target: TaskDependencyTarget,
+}
+
+#[derive(Clone)]
+enum TaskDependencySpec {
+    NamedTask(String),
+
+    // TODO: Implement the TaggedTask support
+    TaggedTask,
+}
+
+#[derive(Clone)]
+enum TaskDependencyTarget {
+    CurrentProject,
+    DependencyProjects,
+    DependencyProjectsAndCurrent,
+}
+
+impl TaskDependency {
+    fn from_config(config: &config::TaskDependency) -> Self {
+        TaskDependency {
+            task: TaskDependencySpec::NamedTask(config.task.clone()),
+            target: TaskDependencyTarget::CurrentProject,
+        }
+    }
+}

@@ -12,12 +12,6 @@ pub struct ProjectFile {
     pub tasks: tasks::TaskBlock,
 }
 
-pub enum ProjectNode {
-    Project(Project),
-    Dependencies(DependencyBlock),
-    Tasks(tasks::TaskBlock),
-}
-
 #[derive(knuffel::Decode, Debug)]
 pub struct Project {
     #[knuffel(argument)]

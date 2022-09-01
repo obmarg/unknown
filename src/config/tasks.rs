@@ -10,31 +10,33 @@ pub struct TaskBlock {
     template_imports: Vec<String>,
 
     #[knuffel(children(name = "task"))]
-    tasks: Vec<TaskDefinition>,
+    pub tasks: Vec<TaskDefinition>,
 }
 
 #[derive(knuffel::Decode, Debug)]
-struct TaskDefinition {
+pub struct TaskDefinition {
     #[knuffel(argument)]
-    name: String,
+    pub name: String,
 
     #[knuffel(children(name = "command"), unwrap(argument))]
-    commands: Vec<String>,
+    pub commands: Vec<String>,
 
     #[knuffel(children(name = "dependency"))]
-    dependency: Vec<TaskDependency>,
+    pub dependencies: Vec<TaskDependency>,
 
     #[knuffel(children(name = "inputs"))]
     input_blocks: Vec<InputBlock>,
 }
 
 #[derive(knuffel::Decode, Debug)]
-struct TaskDependency {
+pub struct TaskDependency {
     #[knuffel(property)]
-    task: String,
+    pub task: String,
 
+    // TODO: Actually wonder if this should be several mutually exclusive properties.
+    // Rather than having to parse a string?  Not sure.
     #[knuffel(property)]
-    target: String,
+    pub target: Option<String>,
     // TODO: Stuff goes here..
 }
 
