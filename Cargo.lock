@@ -472,6 +472,7 @@ dependencies = [
  "knuffel",
  "miette",
  "petgraph",
+ "thiserror",
 ]
 
 [[package]]

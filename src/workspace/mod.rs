@@ -12,7 +12,7 @@ mod graph;
 pub struct Workspace {
     info: WorkspaceInfo,
     project_map: HashMap<String, ProjectInfo>,
-    graph: graph::WorkspaceGraph,
+    pub graph: graph::WorkspaceGraph,
 }
 
 impl std::fmt::Debug for Workspace {
@@ -88,34 +88,44 @@ impl Workspace {
             project_map,
         }
     }
+
+    pub fn projects(&self) -> impl Iterator<Item = &ProjectInfo> {
+        self.project_map.values()
+    }
 }
 
-#[derive(Debug)]
-struct ProjectInfo {
-    name: String,
-    dependencies: Vec<ProjectRef>,
-    tasks: Vec<TaskInfo>,
-    root: PathBuf,
+#[derive(Debug, Hash, PartialEq, Eq)]
+pub struct ProjectInfo {
+    pub name: String,
+    pub dependencies: Vec<ProjectRef>,
+    pub tasks: Vec<TaskInfo>,
+    pub root: PathBuf,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct ProjectRef(String);
 
+impl ProjectRef {
+    pub fn new<T: Into<String>>(name: T) -> Self {
+        ProjectRef(name.into())
+    }
+}
+
 // TODO: Think about sticking this in an arc or similar rather than clone
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct TaskInfo {
     name: String,
     commands: Vec<String>,
     dependencies: Vec<TaskDependency>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
 struct TaskDependency {
     task: TaskDependencySpec,
     target: TaskDependencyTarget,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
 enum TaskDependencySpec {
     NamedTask(String),
 
@@ -123,7 +133,7 @@ enum TaskDependencySpec {
     TaggedTask,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
 enum TaskDependencyTarget {
     CurrentProject,
     DependencyProjects,

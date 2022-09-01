@@ -1,8 +1,12 @@
-use std::path::{Path, PathBuf};
+use std::{
+    collections::HashSet,
+    path::{Path, PathBuf},
+};
 
-use crate::config::ParsingError;
+use crate::{config::ParsingError, workspace::ProjectRef};
 
 mod config;
+mod git;
 mod workspace;
 
 // TODO: Consider using camino::Utf8PathBuf everywhere instead...
@@ -57,10 +61,44 @@ fn main() {
 
     let workspace = workspace::Workspace::new(workspace_file, project_files);
 
-    println!("{workspace:?}");
+    let files_changed = git::files_changed(git::Mode::Feature("origin/main".to_string())).unwrap();
+
+    let repo_root = git::repo_root().expect("need to find repo root");
+    let repo_root = repo_root.as_path();
+
+    println!("{:?}", workspace.graph.dot());
+
+    let projects_changed = files_changed
+        .into_iter()
+        .map(|p| repo_root.join(p))
+        .flat_map(|file| {
+            workspace
+                .projects()
+                .filter(|project| file.starts_with(&project.root))
+                .collect::<Vec<_>>()
+        })
+        .collect::<HashSet<_>>();
+
+    // Ok, so basic monobuild mode requires:
+    // - Map projects_changed into a set of changed & dependant projects.
+    let projects_affected = projects_changed
+        .into_iter()
+        .flat_map(|p| {
+            workspace
+                .graph
+                .walk_project_dependencies(ProjectRef::new(&p.name))
+        })
+        .collect::<HashSet<_>>();
+
+    println!("{projects_affected:?}");
 }
 
 fn find_project_files(root: &Path, project_path: &str) -> Vec<PathBuf> {
+    let root = root.as_os_str().to_str().unwrap();
+    let project_path = match project_path.starts_with('/') {
+        true => format!("{root}{project_path}"),
+        false => format!("{root}/{project_path}"),
+    };
     let glob = match project_path.ends_with('/') {
         true => format!("{project_path}project.kdl"),
         false => format!("{project_path}/project.kdl"),
@@ -78,7 +116,11 @@ fn find_workspace_file() -> Option<PathBuf> {
     while current_path.parent().is_some() {
         current_path.push("workspace.kdl");
         if current_path.exists() {
-            return Some(current_path);
+            return Some(
+                current_path
+                    .canonicalize()
+                    .expect("to be able to canonicalize root path"),
+            );
         }
         current_path.pop();
         current_path.pop();
