@@ -2,7 +2,9 @@ mod project;
 mod tasks;
 mod workspace;
 
-pub use project::ProjectFile;
+use std::path::{Path, PathBuf};
+
+pub use project::ProjectDefinition;
 pub use tasks::*;
 pub use workspace::WorkspaceFile;
 
@@ -18,8 +20,29 @@ impl ParsingError {
     }
 }
 
-pub fn project_from_str(s: &str) -> Result<ProjectFile, ParsingError> {
-    knuffel::parse("file", s).map_err(ParsingError)
+#[derive(Debug)]
+pub struct ProjectFile {
+    pub project_root: PathBuf,
+    pub config: ProjectDefinition,
+}
+
+pub fn parse_project_file(path: &Path, contents: &str) -> Result<ProjectFile, ParsingError> {
+    let config = knuffel::parse(
+        path.file_name()
+            .expect("project file path to have a filename")
+            .to_string_lossy()
+            .as_ref(),
+        contents,
+    )
+    .map_err(ParsingError)?;
+
+    Ok(ProjectFile {
+        project_root: path
+            .parent()
+            .expect("project file path to have a parent")
+            .to_owned(),
+        config,
+    })
 }
 
 pub fn workspace_from_str(s: &str) -> Result<WorkspaceFile, ParsingError> {

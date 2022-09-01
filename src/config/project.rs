@@ -1,14 +1,14 @@
 use super::tasks;
 
 #[derive(knuffel::Decode, Debug)]
-pub struct ProjectFile {
+pub struct ProjectDefinition {
     #[knuffel(child, unwrap(argument))]
     pub project: String,
 
-    #[knuffel(child)]
+    #[knuffel(child, default)]
     pub dependencies: DependencyBlock,
 
-    #[knuffel(child)]
+    #[knuffel(child, default)]
     pub tasks: tasks::TaskBlock,
 }
 
@@ -18,7 +18,7 @@ pub struct Project {
     name: String,
 }
 
-#[derive(knuffel::Decode, Debug)]
+#[derive(knuffel::Decode, Debug, Default)]
 pub struct DependencyBlock {
     #[knuffel(children(name = "project"), unwrap(argument))]
     pub projects: Vec<String>,

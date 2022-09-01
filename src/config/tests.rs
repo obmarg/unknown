@@ -9,7 +9,10 @@ fn test_can_load_project_file() {
         .unwrap()
         .read_to_string(&mut str_data);
 
-    insta::assert_debug_snapshot!(project_from_str(&str_data).map_err(|e| miette::Report::new(e.0)))
+    insta::assert_debug_snapshot!(
+        parse_project_file(&PathBuf::from("blah/project.kdl"), &str_data)
+            .map_err(|e| miette::Report::new(e.0))
+    )
 }
 
 #[test]

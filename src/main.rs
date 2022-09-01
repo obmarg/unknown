@@ -5,6 +5,8 @@ use crate::config::ParsingError;
 mod config;
 mod workspace;
 
+// TODO: Consider using camino::Utf8PathBuf everywhere instead...
+
 fn main() {
     // So, suboptimal startup approach:
     // Walk the parent dir tree till we find a project.kdl
@@ -24,30 +26,38 @@ fn main() {
     // But depends how slow it actually is to read all these project
     // files.  Probably an over optimisation initially.
 
-    let workspace_file = find_workspace_file().expect("couldn't find workspace file");
-    let workspace_data = config::workspace_from_str(
-        &std::fs::read_to_string(&workspace_file).expect("couldn't read workspace file"),
+    let workspace_path = find_workspace_file().expect("couldn't find workspace file");
+    let workspace_file = config::workspace_from_str(
+        &std::fs::read_to_string(&workspace_path).expect("couldn't read workspace file"),
     )
     .map_err(ParsingError::into_report)
     .expect("Failed to parse workspace data");
 
-    let project_files = workspace_data
+    let project_config_paths = workspace_file
         .project_paths
         .iter()
-        .flat_map(|project_path| find_project_files(workspace_file.parent().unwrap(), project_path))
+        .flat_map(|project_path| find_project_files(workspace_path.parent().unwrap(), project_path))
         .collect::<Vec<_>>();
 
-    let project_configs = project_files
+    let project_files = project_config_paths
         .iter()
         .map(|f| {
-            config::project_from_str(
+            let path = f
+                .canonicalize()
+                .expect("project path to be canonicalizable");
+
+            config::parse_project_file(
+                &path,
                 &std::fs::read_to_string(f).expect("couldn't read project file"),
             )
             .map_err(ParsingError::into_report)
         })
-        .collect::<Vec<_>>();
+        .collect::<Result<Vec<_>, _>>()
+        .unwrap();
 
-    println!("{project_configs:?}");
+    let workspace = workspace::Workspace::new(workspace_file, project_files);
+
+    println!("{workspace:?}");
 }
 
 fn find_project_files(root: &Path, project_path: &str) -> Vec<PathBuf> {

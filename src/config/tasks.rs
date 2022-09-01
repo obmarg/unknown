@@ -1,4 +1,4 @@
-#[derive(knuffel::Decode, Debug)]
+#[derive(knuffel::Decode, Debug, Default)]
 pub struct TaskBlock {
     #[knuffel(children(name = "import_dir"), unwrap(argument))]
     dir_imports: Vec<String>,
