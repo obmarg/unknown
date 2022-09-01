@@ -1,15 +1,17 @@
 use std::path::{Path, PathBuf};
 
-use super::{parse_project_file, workspace_from_str, ParsingError, ProjectFile, WorkspaceFile};
+use super::{parse_project_file, parse_workspace_file, ParsingError, ProjectFile, WorkspaceFile};
 
 pub fn load_config_from_cwd() -> Result<(WorkspaceFile, Vec<ProjectFile>), miette::Report> {
     let workspace_path = find_workspace_file().ok_or(MissingWorkspaceFile)?;
-    let workspace_file = workspace_from_str(
+    let workspace_file = parse_workspace_file(
+        &workspace_path,
         &std::fs::read_to_string(&workspace_path).expect("couldn't read workspace file"),
     )
     .map_err(ParsingError::into_report)?;
 
     let project_config_paths = workspace_file
+        .config
         .project_paths
         .iter()
         .flat_map(|project_path| find_project_files(workspace_path.parent().unwrap(), project_path))

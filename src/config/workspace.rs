@@ -1,5 +1,5 @@
 #[derive(knuffel::Decode, Debug)]
-pub struct WorkspaceFile {
+pub struct WorkspaceDefinition {
     #[knuffel(child, unwrap(argument))]
     pub name: String,
 

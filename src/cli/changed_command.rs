@@ -5,7 +5,7 @@ use tabled::{Table, Tabled};
 use super::opts::ChangedOpts;
 use crate::{
     git,
-    workspace::{ProjectRef, Workspace},
+    workspace::{ProjectRef, Workspace, WorkspacePath},
 };
 
 pub fn run(workspace: Workspace, opts: ChangedOpts) -> miette::Result<()> {
@@ -45,7 +45,7 @@ pub fn run(workspace: Workspace, opts: ChangedOpts) -> miette::Result<()> {
         // Maybe.
         Output {
             name: project.name.clone(),
-            path: project.root.to_string_lossy().to_string(),
+            path: project.root.clone(),
         }
     });
 
@@ -75,7 +75,7 @@ pub fn run(workspace: Workspace, opts: ChangedOpts) -> miette::Result<()> {
 #[derive(serde::Serialize, Tabled)]
 pub struct Output {
     name: String,
-    path: String,
+    path: WorkspacePath,
     // TODO: Might be good to include the reason it was included in here as well.
 }
 

@@ -8,6 +8,9 @@ use crate::config;
 use self::graph::WorkspaceGraph;
 
 mod graph;
+mod paths;
+
+pub use paths::WorkspacePath;
 
 pub struct Workspace {
     info: WorkspaceInfo,
@@ -28,6 +31,7 @@ impl std::fmt::Debug for Workspace {
 struct WorkspaceInfo {
     name: String,
     project_paths: Vec<String>,
+    root_path: WorkspacePath,
 }
 
 impl Workspace {
@@ -36,8 +40,9 @@ impl Workspace {
         project_files: Vec<config::ProjectFile>,
     ) -> Self {
         let workspace_info = WorkspaceInfo {
-            name: workspace_file.name,
-            project_paths: workspace_file.project_paths,
+            name: workspace_file.config.name,
+            project_paths: workspace_file.config.project_paths,
+            root_path: WorkspacePath::for_workspace(&workspace_file.workspace_root),
         };
 
         let project_names = project_files
@@ -77,7 +82,7 @@ impl Workspace {
                     name: project_file.config.project.clone(),
                     dependencies,
                     tasks,
-                    root: project_file.project_root.clone(),
+                    root: workspace_info.root_path.subpath(&project_file.project_root),
                 },
             );
         }
@@ -105,7 +110,7 @@ pub struct ProjectInfo {
     pub name: String,
     pub dependencies: Vec<ProjectRef>,
     pub tasks: Vec<TaskInfo>,
-    pub root: PathBuf,
+    pub root: WorkspacePath,
 }
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]

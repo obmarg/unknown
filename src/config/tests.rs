@@ -22,7 +22,9 @@ fn test_can_load_workspace_file() {
         .unwrap()
         .read_to_string(&mut str_data);
 
-    insta::assert_debug_snapshot!(
-        workspace_from_str(&str_data).map_err(|e| miette::Report::new(e.0))
+    insta::assert_debug_snapshot!(parse_workspace_file(
+        &PathBuf::from("blah/workspace.kdl"),
+        &str_data
     )
+    .map_err(|e| miette::Report::new(e.0)))
 }

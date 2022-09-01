@@ -6,7 +6,8 @@ mod workspace;
 use std::path::{Path, PathBuf};
 
 pub use self::{
-    loader::load_config_from_cwd, project::ProjectDefinition, tasks::*, workspace::WorkspaceFile,
+    loader::load_config_from_cwd, project::ProjectDefinition, tasks::*,
+    workspace::WorkspaceDefinition,
 };
 
 #[cfg(test)]
@@ -46,6 +47,27 @@ pub fn parse_project_file(path: &Path, contents: &str) -> Result<ProjectFile, Pa
     })
 }
 
-pub fn workspace_from_str(s: &str) -> Result<WorkspaceFile, ParsingError> {
-    knuffel::parse("file", s).map_err(ParsingError)
+#[derive(Debug)]
+pub struct WorkspaceFile {
+    pub workspace_root: PathBuf,
+    pub config: WorkspaceDefinition,
+}
+
+pub fn parse_workspace_file(path: &Path, contents: &str) -> Result<WorkspaceFile, ParsingError> {
+    let config = knuffel::parse(
+        path.file_name()
+            .expect("workspace file path to have a filename")
+            .to_string_lossy()
+            .as_ref(),
+        contents,
+    )
+    .map_err(ParsingError)?;
+
+    Ok(WorkspaceFile {
+        workspace_root: path
+            .parent()
+            .expect("workspace file path to have a parent")
+            .to_owned(),
+        config,
+    })
 }
