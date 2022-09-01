@@ -1,12 +1,13 @@
+mod loader;
 mod project;
 mod tasks;
 mod workspace;
 
 use std::path::{Path, PathBuf};
 
-pub use project::ProjectDefinition;
-pub use tasks::*;
-pub use workspace::WorkspaceFile;
+pub use self::{
+    loader::load_config_from_cwd, project::ProjectDefinition, tasks::*, workspace::WorkspaceFile,
+};
 
 #[cfg(test)]
 mod tests;

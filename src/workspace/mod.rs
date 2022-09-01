@@ -92,6 +92,12 @@ impl Workspace {
     pub fn projects(&self) -> impl Iterator<Item = &ProjectInfo> {
         self.project_map.values()
     }
+
+    pub fn lookup(&self, project_ref: &ProjectRef) -> &ProjectInfo {
+        // TODO: This basically assumes a ProjectRef is always valid.
+        // Probably need to enforce that with types somehow or make this return an option
+        &self.project_map[&project_ref.0]
+    }
 }
 
 #[derive(Debug, Hash, PartialEq, Eq)]
@@ -108,6 +114,10 @@ pub struct ProjectRef(String);
 impl ProjectRef {
     pub fn new<T: Into<String>>(name: T) -> Self {
         ProjectRef(name.into())
+    }
+
+    pub fn name(&self) -> &str {
+        return &self.0;
     }
 }
 
