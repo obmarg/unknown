@@ -3,6 +3,7 @@ use clap::Parser;
 use crate::{config::load_config_from_cwd, workspace::Workspace};
 
 mod changed_command;
+mod filters;
 
 #[derive(Parser)]
 pub struct Cli {

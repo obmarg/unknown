@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 atty = "0.2.14"
 camino = "1.1.1"
+chumsky = "0.8.0"
 clap = { version = "3.2", features=["derive"] }
 glob = "0.3.0"
 knuffel = "2.0"
@@ -20,3 +21,4 @@ thiserror = "1.0"
 
 [dev-dependencies]
 insta = "1.19"
+rstest = "0.15.0"
