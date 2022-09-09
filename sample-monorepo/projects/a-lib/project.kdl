@@ -1,1 +1,7 @@
 project "a-lib"
+
+tasks {
+    task "build" {
+        command r#"echo "build-a-lib""#
+    }
+}

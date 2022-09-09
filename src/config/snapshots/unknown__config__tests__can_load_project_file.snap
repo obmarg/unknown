@@ -1,80 +1,82 @@
 ---
 source: src/config/tests.rs
-assertion_line: 12
-expression: "project_from_str(&str_data).map_err(|e| miette::Report::new(e.0))"
+assertion_line: 13
+expression: "parse_project_file(&PathBuf::from(\"blah/project.kdl\"),\n        &str_data).map_err(|e| miette::Report::new(e.0))"
 ---
 Ok(
     ProjectFile {
-        project: "my_project",
-        dependencies: DependencyBlock {
-            projects: [
-                ProjectDependency {
-                    name: "other_project",
-                },
-            ],
-            paths: [
-                PathDependency {
-                    path: "lib/whatever",
-                },
-            ],
-            imports: [
-                DependencyImport {
-                    path: "Cargo.lock",
-                },
-                DependencyImport {
-                    path: "package.json",
-                },
-            ],
-        },
-        tasks: TaskBlock {
-            dir_imports: [
-                ".tasks",
-            ],
-            file_imports: [
-                ".tasks",
-            ],
-            template_imports: [
-                "blah-de-blah",
-            ],
-            tasks: [
-                TaskDefinition {
-                    name: "build",
-                    commands: [
-                        "cargo build",
-                    ],
-                    dependency: [
-                        TaskDependency {
-                            task: "generate",
-                            target: "^self",
-                        },
-                    ],
-                    input_blocks: [
-                        InputBlock {
-                            files: [
-                                "whatever",
-                            ],
-                            dirs: [
-                                DirInput {
-                                    path: "whatever",
-                                    glob: None,
-                                },
-                                DirInput {
-                                    path: "whatever",
-                                    glob: Some(
-                                        "*",
-                                    ),
-                                },
-                            ],
-                            env_vars: [
-                                "xyz",
-                            ],
-                            command_outputs: [
-                                "",
-                            ],
-                        },
-                    ],
-                },
-            ],
+        project_root: "blah",
+        config: ProjectDefinition {
+            project: "my_project",
+            dependencies: DependencyBlock {
+                projects: [
+                    "other_project",
+                ],
+                paths: [
+                    "lib/whatever",
+                ],
+                imports: [
+                    DependencyImport {
+                        path: "Cargo.lock",
+                    },
+                    DependencyImport {
+                        path: "package.json",
+                    },
+                ],
+            },
+            tasks: TaskBlock {
+                dir_imports: [
+                    ".tasks",
+                ],
+                file_imports: [
+                    ".tasks",
+                ],
+                template_imports: [
+                    "blah-de-blah",
+                ],
+                tasks: [
+                    TaskDefinition {
+                        name: "build",
+                        commands: [
+                            "cargo build",
+                        ],
+                        dependencies: [
+                            TaskDependency {
+                                task: "generate",
+                                for_project_deps: Some(
+                                    true,
+                                ),
+                                include_this_package: None,
+                            },
+                        ],
+                        input_blocks: [
+                            InputBlock {
+                                files: [
+                                    "whatever",
+                                ],
+                                dirs: [
+                                    DirInput {
+                                        path: "whatever",
+                                        glob: None,
+                                    },
+                                    DirInput {
+                                        path: "whatever",
+                                        glob: Some(
+                                            "*",
+                                        ),
+                                    },
+                                ],
+                                env_vars: [
+                                    "xyz",
+                                ],
+                                command_outputs: [
+                                    "",
+                                ],
+                            },
+                        ],
+                    },
+                ],
+            },
         },
     },
 )

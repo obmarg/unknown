@@ -1,34 +1,6 @@
 project "my_project"
 // TODO: need a way to do tags.
 
-/*
-// TODO: Do we need a way to specify which files
-// are part of this project?  Could just default to the
-// contents of the current directory
-// Although maybe a way to override it would be useful?
-
-// Question: Should deps be named or paths?
-// Could support both via path="whatever" syntax?
-depend_on "other_project" hard=true
-depend_on path="lib/whatever" hard=true
-
-// Could support 'hard' deps via arguments.
-// Not sure I like the soft/hard distinction too much though.
-// Flexible tagging of deps with the ability to query on those
-// tags would be more flexible.  Maybe easier to understand when
-// users can choose the meaning of the tags?   Or maybe it'll
-// just be more complex...
-depend_on "other_project" hard=true
-
-// Could at a later date support detecting language based deps
-// via something like the following:
-dependencies_from "Cargo.lock"
-dependencies_from "Cargo.toml"
-dependencies_from "package.json"
-dependencies_from "package-lock.json"
-*/
-
-// Guess dependencies could be also be a block?
 dependencies {
     project "other_project"
     path "lib/whatever"
@@ -59,7 +31,7 @@ tasks {
         // Not sure about this syntax, but want a way to specify which
         // tasks should be run before this, and for what part (if any)
         // of the project dependency tree
-        dependency task="generate" target="^self"
+        dependency task="generate" for-project-deps=true
 
         // Of course that's where the hard part of the problem is.
         // Can't determine whether a task needs to be re-run if we don't

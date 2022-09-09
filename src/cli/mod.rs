@@ -4,6 +4,7 @@ use crate::{config::load_config_from_cwd, workspace::Workspace};
 
 mod changed_command;
 mod filters;
+mod run_command;
 
 #[derive(Parser)]
 pub struct Cli {
@@ -15,6 +16,7 @@ pub struct Cli {
 pub enum Command {
     /// Reports which projects have changed in the repository, including dependants that may be affected
     Changed(changed_command::ChangedOpts),
+    Run(run_command::RunOpts),
 }
 
 pub fn run() -> miette::Result<()> {
@@ -23,6 +25,7 @@ pub fn run() -> miette::Result<()> {
 
     match opts.command {
         Command::Changed(command_opts) => changed_command::run(workspace, command_opts),
+        Command::Run(command_opts) => run_command::run(workspace, command_opts),
     }
 }
 

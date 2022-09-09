@@ -33,11 +33,14 @@ pub struct TaskDependency {
     #[knuffel(property)]
     pub task: String,
 
-    // TODO: Actually wonder if this should be several mutually exclusive properties.
-    // Rather than having to parse a string?  Not sure.
+    // TODO: This feels like a shit name, come up with something better.
+    // for_ancestors?  for_parents?
+    // run_for_parents?
     #[knuffel(property)]
-    pub target: Option<String>,
-    // TODO: Stuff goes here..
+    pub for_project_deps: Option<bool>,
+
+    #[knuffel(property(name = "self"))]
+    pub include_this_package: Option<bool>,
 }
 
 #[derive(knuffel::Decode, Debug)]

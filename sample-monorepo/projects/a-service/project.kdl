@@ -4,3 +4,10 @@ project "a-service"
 dependencies {
     project "a-lib"
 }
+
+tasks {
+    task "build" {
+        dependency task="build" for-project-deps=true
+        command r#"echo "build-a-service""#
+    }
+}

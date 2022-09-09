@@ -31,7 +31,7 @@ pub enum Format {
 }
 
 pub fn run(workspace: Workspace, opts: ChangedOpts) -> miette::Result<()> {
-    let files_changed = git::files_changed(git::Mode::Feature(opts.since)).unwrap();
+    let files_changed = git::files_changed(git::Mode::Feature(opts.since))?;
 
     let repo_root = git::repo_root().expect("need to find repo root");
     let repo_root = repo_root.as_path();
@@ -51,11 +51,7 @@ pub fn run(workspace: Workspace, opts: ChangedOpts) -> miette::Result<()> {
     // - Map projects_changed into a set of changed & dependant projects.
     let projects_affected = projects_changed
         .into_iter()
-        .flat_map(|p| {
-            workspace
-                .graph
-                .walk_project_dependencies(ProjectRef::new(&p.name))
-        })
+        .flat_map(|p| workspace.graph.walk_project_dependents(p.project_ref()))
         .collect::<HashSet<_>>();
 
     // TODO: Probably topsort the output.

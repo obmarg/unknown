@@ -10,7 +10,7 @@ pub enum Mode {
     Main(String),    // base commit, e.g. 'HEAD^1'
 }
 
-#[derive(PartialEq, Error, Debug)]
+#[derive(PartialEq, Error, Debug, miette::Diagnostic)]
 pub enum GitError {
     #[error("Cannot find merge base with branch {0}: {1}")]
     MergeBase(String, String), // base branch, error

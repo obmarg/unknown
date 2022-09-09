@@ -3,7 +3,7 @@ use std::str::FromStr;
 use chumsky::{prelude::*, primitive::Filter};
 
 #[derive(Debug)]
-pub struct PackageFilter {
+pub struct ProjectFilter {
     pub specs: Vec<FilterSpec>,
 }
 
@@ -21,7 +21,7 @@ pub enum Matcher {
     Exclude(String),
 }
 
-impl std::fmt::Display for PackageFilter {
+impl std::fmt::Display for ProjectFilter {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut first = true;
         for spec in &self.specs {
@@ -61,12 +61,16 @@ pub struct PackageFilterParseErrors {
 impl PackageFilterParseErrors {
     fn new(errors: Vec<Simple<char>>) -> Self {
         PackageFilterParseErrors {
-            errors: errors.into_iter().map(|e| e.to_string()).join(", "),
+            errors: errors
+                .into_iter()
+                .map(|e| e.to_string())
+                .collect::<Vec<_>>()
+                .join(", "),
         }
     }
 }
 
-impl FromStr for PackageFilter {
+impl FromStr for ProjectFilter {
     type Err = PackageFilterParseErrors;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -77,7 +81,7 @@ impl FromStr for PackageFilter {
     }
 }
 
-fn parser() -> impl chumsky::Parser<char, PackageFilter, Error = Simple<char>> {
+fn parser() -> impl chumsky::Parser<char, ProjectFilter, Error = Simple<char>> {
     let is_package_char = |c: &char| c.is_alphabetic() || *c == '_' || *c == '-';
 
     let package_name = filter(is_package_char)
@@ -94,7 +98,7 @@ fn parser() -> impl chumsky::Parser<char, PackageFilter, Error = Simple<char>> {
         .separated_by(just(','))
         .allow_trailing()
         .at_least(1)
-        .map(|specs| PackageFilter { specs })
+        .map(|specs| ProjectFilter { specs })
 }
 
 #[cfg(test)]
@@ -106,6 +110,6 @@ mod tests {
     #[case::package_name("a-library")]
     #[case::several_package_names("a-library,a-service")]
     fn test_parsing_package_name(#[case] input: &str) {
-        assert_eq!(input.parse::<PackageFilter>().unwrap().to_string(), input);
+        assert_eq!(input.parse::<ProjectFilter>().unwrap().to_string(), input);
     }
 }

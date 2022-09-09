@@ -53,6 +53,8 @@ impl Workspace {
         let mut project_map = HashMap::with_capacity(project_files.len());
 
         for project_file in &project_files {
+            let project_ref = ProjectRef(project_file.config.project.clone());
+
             let mut dependencies = Vec::new();
             // TODO: handle other dependencies
             for project in &project_file.config.dependencies.projects {
@@ -66,6 +68,7 @@ impl Workspace {
             // TODO: handle task imports
             for task in &project_file.config.tasks.tasks {
                 tasks.push(TaskInfo {
+                    project: project_ref.clone(),
                     name: task.name.clone(),
                     commands: task.commands.clone(),
                     dependencies: task
@@ -105,6 +108,16 @@ impl Workspace {
     }
 }
 
+impl TaskRef {
+    pub fn lookup<'a>(&self, workspace: &'a Workspace) -> &'a TaskInfo {
+        workspace.project_map[&self.0 .0]
+            .tasks
+            .iter()
+            .find(|task| task.name == self.1)
+            .expect("a valid TaskRef for the given Workspace")
+    }
+}
+
 #[derive(Debug, Hash, PartialEq, Eq)]
 pub struct ProjectInfo {
     pub name: String,
@@ -113,53 +126,63 @@ pub struct ProjectInfo {
     pub root: WorkspacePath,
 }
 
+impl ProjectInfo {
+    pub fn project_ref(&self) -> ProjectRef {
+        ProjectRef(self.name.clone())
+    }
+
+    pub fn lookup_task(&self, name: &str) -> Option<&TaskInfo> {
+        self.tasks.iter().find(|task| task.name == name)
+    }
+}
+
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct ProjectRef(String);
 
 impl ProjectRef {
-    pub fn new<T: Into<String>>(name: T) -> Self {
-        ProjectRef(name.into())
-    }
-
     pub fn name(&self) -> &str {
         return &self.0;
     }
 }
 
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+pub struct TaskRef(ProjectRef, String);
+
 // TODO: Think about sticking this in an arc or similar rather than clone
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct TaskInfo {
-    name: String,
-    commands: Vec<String>,
-    dependencies: Vec<TaskDependency>,
+    pub project: ProjectRef,
+    pub name: String,
+    pub commands: Vec<String>,
+    pub dependencies: Vec<TaskDependency>,
+}
+
+impl TaskInfo {
+    pub fn task_ref(&self) -> TaskRef {
+        TaskRef(self.project.clone(), self.name.clone())
+    }
 }
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
-struct TaskDependency {
-    task: TaskDependencySpec,
-    target: TaskDependencyTarget,
+pub struct TaskDependency {
+    pub task: TaskDependencySpec,
+    pub target_self: bool,
+    pub target_deps: bool,
 }
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
-enum TaskDependencySpec {
+pub enum TaskDependencySpec {
     NamedTask(String),
-
     // TODO: Implement the TaggedTask support
-    TaggedTask,
-}
-
-#[derive(Clone, Debug, Hash, PartialEq, Eq)]
-enum TaskDependencyTarget {
-    CurrentProject,
-    DependencyProjects,
-    DependencyProjectsAndCurrent,
+    // TaggedTask,
 }
 
 impl TaskDependency {
     fn from_config(config: &config::TaskDependency) -> Self {
         TaskDependency {
             task: TaskDependencySpec::NamedTask(config.task.clone()),
-            target: TaskDependencyTarget::CurrentProject,
+            target_self: config.include_this_package.unwrap_or(true),
+            target_deps: config.for_project_deps.unwrap_or_default(),
         }
     }
 }

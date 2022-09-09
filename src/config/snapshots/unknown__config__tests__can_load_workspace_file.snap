@@ -1,13 +1,16 @@
 ---
 source: src/config/tests.rs
-assertion_line: 22
-expression: "workspace_from_str(&str_data).map_err(|e| miette::Report::new(e.0))"
+assertion_line: 27
+expression: "parse_workspace_file(&PathBuf::from(\"blah/workspace.kdl\"),\n        &str_data).map_err(|e| miette::Report::new(e.0))"
 ---
 Ok(
     WorkspaceFile {
-        name: "my-workspace",
-        project_paths: [
-            "**",
-        ],
+        workspace_root: "blah",
+        config: WorkspaceDefinition {
+            name: "my-workspace",
+            project_paths: [
+                "**",
+            ],
+        },
     },
 )
