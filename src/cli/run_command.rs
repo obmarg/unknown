@@ -1,13 +1,13 @@
 use std::{
     collections::{HashMap, HashSet},
-    io::Read,
+    io::{Read, Write},
     process::Stdio,
     sync::Arc,
 };
 
 use futures::{stream::FuturesUnordered, StreamExt};
 use tabled::{Table, Tabled};
-use tokio::runtime::Runtime;
+use tokio::{io::AsyncReadExt, runtime::Runtime};
 
 use crate::{
     git,
@@ -222,15 +222,112 @@ async fn run_task(task: &TaskInfo, workspace: &Workspace) -> Result<(), ()> {
         let mut child = tokio::process::Command::new(command)
             .args(args)
             .current_dir(&workspace.lookup(&task.project).root)
+            .stderr(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stdin(Stdio::null())
+            .kill_on_drop(true)
             .spawn()
             .map_err(|_| ())?;
 
-        // TODO: Do better stuff with output, currently just piped to stdout
+        let mut child_stdout = child.stdout.take().expect("to get the stdout of a child");
+        let mut child_stderr = child.stderr.take().expect("to get the stdout of a child");
 
-        if !child.wait().await.map_err(|_| ())?.success() {
-            return Err(());
+        let mut stdout_buf = [0u8; 1024];
+        let mut stderr_buf = [0u8; 1024];
+
+        // TODO: Ideally want to colourise & align this, but I think that can wait.
+        // Think this can also be abstracted.
+        let annotation = format!("{}::{}: ", task.project.name(), task.name);
+        let mut stdout = AnnotatedWrite::new(&annotation, std::io::stdout());
+        let mut stderr = AnnotatedWrite::new(&annotation, std::io::stderr());
+
+        // TODO: Move this block into some kind of extension trait/function
+        loop {
+            tokio::select! {
+                stdout_read = child_stdout.read(&mut stdout_buf) => {
+                    match stdout_read {
+                        Ok(len) => {
+                            stdout.write_all(&stdout_buf[0..len]).unwrap();
+                        }
+                        Err(_) => {
+                            return Err(());
+                        }
+                    }
+                },
+
+                stderr_read = child_stderr.read(&mut stderr_buf) => {
+                    match stderr_read {
+                        Ok(len) => {
+                            stderr.write_all(&stderr_buf[0..len]).unwrap();
+                        }
+                        Err(_) => {
+                            return Err(());
+                        }
+                    }
+                }
+
+                result = child.wait() => {
+                    // Done so... do something?
+                    // For now just return tbh.
+                    // At the very least I need to check return codes.
+                    return Ok(());
+                }
+            }
         }
+
+        // let stdout = std::io::BufReader::new(child.stdout.expect("to get the stdout of a child"));
+        // let stderr = std::io::BufReader::new(child.stderr.expect("to get the stderr of a child"));
+        // while let Ok(None) = child.try_wait() {
+        //     use std::io::prelude;
+        // }
+        // TODO: Do better stuff with output, currently just piped to stdout
     }
 
     Ok(())
+}
+
+struct AnnotatedWrite<'a, W> {
+    annotation: &'a str,
+    inner: W,
+    next_needs_annotated: bool,
+    newline: u8,
+}
+
+impl<W> AnnotatedWrite<'_, W> {
+    fn new<'a>(annotation: &'a str, inner: W) -> AnnotatedWrite<'a, W> {
+        AnnotatedWrite {
+            annotation,
+            inner,
+            next_needs_annotated: true,
+            newline: u8::try_from('\n').unwrap(),
+        }
+    }
+}
+
+impl<W> std::io::Write for AnnotatedWrite<'_, W>
+where
+    W: std::io::Write,
+{
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        let mut bytes_used = 0;
+        if self.next_needs_annotated {
+            // TODO: Write annotation.
+            self.next_needs_annotated = false;
+            self.inner.write_all(self.annotation.as_bytes())?;
+        }
+        let mut chunks = buf.split_inclusive(|c| *c == self.newline).peekable();
+        while let Some(chunk) = chunks.next() {
+            bytes_used += self.inner.write(chunk)?;
+            if chunks.peek().is_some() {
+                self.inner.write_all(self.annotation.as_bytes())?;
+            } else if chunk.ends_with(&[self.newline]) {
+                self.next_needs_annotated = true;
+            }
+        }
+        Ok(bytes_used)
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        self.inner.flush()
+    }
 }
