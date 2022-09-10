@@ -1,6 +1,12 @@
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    io::Read,
+    process::Stdio,
+    sync::Arc,
+};
 
 use tabled::{Table, Tabled};
+use tokio::runtime::Runtime;
 
 use crate::{
     git,
@@ -33,6 +39,8 @@ pub struct RunOpts {
 }
 
 pub fn run(workspace: Workspace, opts: RunOpts) -> miette::Result<()> {
+    let workspace = Arc::new(workspace);
+
     let target_projects = filter_projects(&workspace, opts.filter);
     let tasks = find_tasks(&workspace, &target_projects, opts.tasks);
 
@@ -42,9 +50,11 @@ pub fn run(workspace: Workspace, opts: RunOpts) -> miette::Result<()> {
     let (task_finished, tasks_finished) =
         crossbeam::channel::unbounded::<Result<TaskRef, TaskRef>>();
 
-    std::thread::scope(|s| {
+    let rt = Runtime::new().expect("to be able to start tokio runtime");
+    rt.block_on(async {
+        let tasks = tasks.clone();
         // The supervisor process
-        s.spawn(|| {
+        let supervisor = tokio::spawn(async move {
             let tasks = tasks.clone();
             let mut waiting = tasks
                 .iter()
@@ -104,20 +114,24 @@ pub fn run(workspace: Workspace, opts: RunOpts) -> miette::Result<()> {
 
         // Spawn some worker processes
         // TODO: Pick better numbers
+        let mut workers = Vec::new();
         for _ in 0..5 {
             let task_finished = task_finished.clone();
             let tasks_ready = tasks_ready.clone();
-            let workspace = &workspace;
-            s.spawn(move || loop {
-                match tasks_ready.recv() {
-                    Ok(task) => {
-                        let result =
-                            run_task(task.lookup(workspace), workspace).map(|_| task.clone());
-                        task_finished.send(result.map_err(|_| task.clone())).ok();
+            let workspace = Arc::clone(&workspace);
+            workers.push(tokio::spawn(async move {
+                loop {
+                    match tasks_ready.recv() {
+                        Ok(task) => {
+                            let result = run_task(task.lookup(&workspace), &workspace)
+                                .await
+                                .map(|_| task.clone());
+                            task_finished.send(result.map_err(|_| task.clone())).ok();
+                        }
+                        Err(_) => return,
                     }
-                    Err(_) => return,
                 }
-            });
+            }));
         }
 
         // Start a number of workers that read from a queue.
@@ -249,7 +263,7 @@ fn find_tasks<'a>(
         .collect()
 }
 
-fn run_task(task: &TaskInfo, workspace: &Workspace) -> Result<(), ()> {
+async fn run_task(task: &TaskInfo, workspace: &Workspace) -> Result<(), ()> {
     // TODO: want to determine whether this task needs to run based on its inputs/results
     // of its dependencies.
 
