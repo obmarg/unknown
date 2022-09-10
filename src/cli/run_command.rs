@@ -5,6 +5,7 @@ use std::{
     sync::Arc,
 };
 
+use futures::{stream::FuturesUnordered, StreamExt};
 use tabled::{Table, Tabled};
 use tokio::runtime::Runtime;
 
@@ -46,101 +47,76 @@ pub fn run(workspace: Workspace, opts: RunOpts) -> miette::Result<()> {
 
     // TODO: each task needs a HashSet of TaskRefs for its _direct_ dependencies.
 
-    let (task_ready, tasks_ready) = crossbeam::channel::unbounded::<TaskRef>();
-    let (task_finished, tasks_finished) =
-        crossbeam::channel::unbounded::<Result<TaskRef, TaskRef>>();
-
     let rt = Runtime::new().expect("to be able to start tokio runtime");
     rt.block_on(async {
         let tasks = tasks.clone();
-        // The supervisor process
-        let supervisor = tokio::spawn(async move {
-            let tasks = tasks.clone();
-            let mut waiting = tasks
-                .iter()
-                .map(|task| (task.task_ref.clone(), task.deps.len()))
-                .collect::<HashMap<_, _>>();
+        let mut waiting = tasks
+            .iter()
+            .map(|task| (task.task_ref.clone(), task.deps.len()))
+            .collect::<HashMap<_, _>>();
 
-            let mut to_start = Vec::new();
-            let mut dependants = HashMap::<_, Vec<_>>::new();
-            for task in tasks.into_iter() {
-                if task.deps.is_empty() {
-                    waiting.remove(&task.task_ref);
-                    to_start.push(task.task_ref.clone());
-                }
-                for dep in task.deps {
-                    dependants
-                        .entry(dep)
-                        .or_default()
-                        .push(task.task_ref.clone());
-                }
+        let mut ready = Vec::new();
+        let mut dependants = HashMap::<_, Vec<_>>::new();
+        for task in tasks.into_iter() {
+            if task.deps.is_empty() {
+                waiting.remove(&task.task_ref);
+                ready.push(task.task_ref.clone());
             }
-
-            // Any tasks without deps can go into the work pool first.
-            for task in to_start.into_iter().rev() {
-                task_ready.send(task).unwrap();
+            for dep in task.deps {
+                dependants
+                    .entry(dep)
+                    .or_default()
+                    .push(task.task_ref.clone());
             }
+        }
 
-            let mut tasks_done = HashSet::<TaskRef>::new();
-            while !waiting.is_empty() {
-                match tasks_finished.recv().unwrap() {
-                    Ok(successful_task) => {
-                        if !dependants.contains_key(&successful_task) {
-                            continue;
-                        }
-                        for dependant in &dependants[&successful_task] {
-                            let waiting_for = waiting
-                                .entry(dependant.clone())
-                                .and_modify(|count| *count -= 1)
-                                .or_default();
-                            if *waiting_for == 0 {
-                                waiting.remove(dependant);
-                                task_ready.send(dependant.clone()).unwrap();
-                            }
-                        }
-                    }
-                    Err(failed_task) => {
-                        // TODO: report the failure somehow.
-                        waiting.clear();
-                    }
-                }
-
-                // Wait for tasks to finish.
-                // When they do, decrement waiting.
-                // If the thing being decremented has no deps then execute it and pop it.
-            }
-            drop(task_ready);
-        });
-
-        // Spawn some worker processes
-        // TODO: Pick better numbers
-        let mut workers = Vec::new();
-        for _ in 0..5 {
-            let task_finished = task_finished.clone();
-            let tasks_ready = tasks_ready.clone();
+        let mut currently_running = FuturesUnordered::new();
+        for task in ready.drain(0..).rev() {
             let workspace = Arc::clone(&workspace);
-            workers.push(tokio::spawn(async move {
-                loop {
-                    match tasks_ready.recv() {
-                        Ok(task) => {
-                            let result = run_task(task.lookup(&workspace), &workspace)
-                                .await
-                                .map(|_| task.clone());
-                            task_finished.send(result.map_err(|_| task.clone())).ok();
-                        }
-                        Err(_) => return,
-                    }
-                }
+
+            currently_running.push(tokio::spawn(async move {
+                let result = run_task(task.lookup(&workspace), &workspace)
+                    .await
+                    .map(|_| task.clone());
+                result.map_err(|_| task)
             }));
         }
 
-        // Start a number of workers that read from a queue.
-        // Each worker needs to read from tasks_ready.
-        // (Exit if it has been disconnected)
-        // - Check if the inputs for the given task have changed.
-        //   - If not, skip and record done.
-        // If yes, do the task.
-        // Send a message on task_finished so the worker knows what to do.
+        while let Some(join_result) = currently_running.next().await {
+            match join_result {
+                Ok(Ok(successful_task)) => {
+                    if !dependants.contains_key(&successful_task) {
+                        continue;
+                    }
+                    for dependant in &dependants[&successful_task] {
+                        let waiting_for = waiting
+                            .entry(dependant.clone())
+                            .and_modify(|count| *count -= 1)
+                            .or_default();
+                        if *waiting_for == 0 {
+                            waiting.remove(dependant);
+
+                            let workspace = Arc::clone(&workspace);
+                            let task = dependant.clone();
+
+                            currently_running.push(tokio::spawn(async move {
+                                let result = run_task(task.lookup(&workspace), &workspace)
+                                    .await
+                                    .map(|_| task.clone());
+                                result.map_err(|_| task)
+                            }));
+                        }
+                    }
+                }
+                Ok(Err(failed_task)) => {
+                    // TODO: report the failure somehow.
+                    waiting.clear();
+                }
+                Err(join_err) => {
+                    todo!()
+                }
+            };
+        }
     });
 
     // Now, for each task in tasks:
@@ -154,36 +130,6 @@ pub fn run(workspace: Workspace, opts: RunOpts) -> miette::Result<()> {
     // Once each task finishes processing, we trawl the list looking for one thats deps
     // have been satisfied, send the first one off to a worker.  Repeat if there are still
     // free workers.
-
-    /*
-       let files_changed = match opts.since {
-           Some(since) => git::files_changed(git::Mode::Feature(since))?,
-           None => {
-               // In this case we probably need to know the hashes of all relevant
-               // inputs.
-               todo!()
-           }
-       };
-
-       let repo_root = git::repo_root().expect("need to find repo root");
-       let repo_root = repo_root.as_path();
-
-       let projects_changed = files_changed
-           .into_iter()
-           .map(|p| repo_root.join(p))
-           .flat_map(|file| {
-               workspace
-                   .projects()
-                   .filter(|project| file.starts_with(&project.root))
-                   .collect::<Vec<_>>()
-           })
-           .collect::<HashSet<_>>();
-
-       let projects_affected = projects_changed
-           .into_iter()
-           .flat_map(|p| workspace.graph.walk_project_dependents(p.project_ref()))
-           .collect::<HashSet<_>>();
-    */
 
     Ok(())
 }
@@ -273,7 +219,7 @@ async fn run_task(task: &TaskInfo, workspace: &Workspace) -> Result<(), ()> {
             .next()
             .expect("there to be some content in a tasks command");
 
-        let mut child = std::process::Command::new(command)
+        let mut child = tokio::process::Command::new(command)
             .args(args)
             .current_dir(&workspace.lookup(&task.project).root)
             .spawn()
@@ -281,7 +227,7 @@ async fn run_task(task: &TaskInfo, workspace: &Workspace) -> Result<(), ()> {
 
         // TODO: Do better stuff with output, currently just piped to stdout
 
-        if !child.wait().map_err(|_| ())?.success() {
+        if !child.wait().await.map_err(|_| ())?.success() {
             return Err(());
         }
     }
