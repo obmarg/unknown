@@ -47,8 +47,6 @@ pub fn run(workspace: Workspace, opts: ChangedOpts) -> miette::Result<()> {
         })
         .collect::<HashSet<_>>();
 
-    // Ok, so basic monobuild mode requires:
-    // - Map projects_changed into a set of changed & dependant projects.
     let projects_affected = projects_changed
         .into_iter()
         .flat_map(|p| workspace.graph.walk_project_dependents(p.project_ref()))
@@ -56,11 +54,7 @@ pub fn run(workspace: Workspace, opts: ChangedOpts) -> miette::Result<()> {
 
     // TODO: Probably topsort the output.
     let outputs = projects_affected.into_iter().map(|project_ref| {
-        let project = workspace.lookup(&project_ref);
-        // TODO: Probably want these paths to be relative to the repo root.
-        //
-        // Do I want my own abstraction that covers this?
-        // Maybe.
+        let project = project_ref.lookup(&workspace);
         Output {
             name: project.name.clone(),
             path: project.root.clone(),
