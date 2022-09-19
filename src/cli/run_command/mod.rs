@@ -27,11 +27,13 @@ use crate::{
 use self::{
     child_ext::ChildExt,
     output::{build_command_outputs, CommandOutput},
+    runner::TaskRunner,
 };
 use super::filters::ProjectFilter;
 
 mod child_ext;
 mod output;
+mod runner;
 
 #[derive(clap::Parser)]
 pub struct RunOpts {
@@ -71,7 +73,7 @@ pub fn run(workspace: Workspace, opts: RunOpts) -> miette::Result<()> {
     let rt = Runtime::new().expect("to be able to start tokio runtime");
     rt.block_on(async {
         let tasks = tasks.clone();
-        let mut outputs = build_command_outputs(
+        let outputs = build_command_outputs(
             &tasks
                 .iter()
                 .map(|task| task.task_ref.lookup(&workspace))
@@ -97,86 +99,32 @@ pub fn run(workspace: Workspace, opts: RunOpts) -> miette::Result<()> {
             }
         }
 
-        let mut currently_running = FuturesUnordered::new();
+        let mut runner = TaskRunner::new(&workspace, opts.since.clone(), outputs, &hash_registry);
+
         for task in ready.drain(0..).rev() {
-            let workspace = Arc::clone(&workspace);
-            let since = opts.since.clone();
-            let hash_registry = Arc::clone(&hash_registry);
-
-            let output = outputs
-                .remove(&task)
-                .expect("a CommandOutput to exist for every task");
-
-            currently_running.push(tokio::spawn(async move {
-                // TODO: ok, so basically:
-                // Prior to running a task we want to hash its inputs regardless
-                // of whether we're actually going to use that hash.
-                // Then when task is succesful we update the HashRegistry with that hash.
-                // If task is not succesful, do not update.  Simples.
-                //
-                // Also need to think about how changes in project deps interact with this...
-                //
-                // So I guess at this point we need to know what the inputs
-                // of a task even are.
-                //
-                // By default it's all (non ignored) files in the project.
-                let result = run_task(
-                    task.lookup(&workspace),
-                    &workspace,
-                    output,
-                    since,
-                    &hash_registry,
-                )
-                .await
-                .map(|_| task.clone());
-                result.map_err(|_| task)
-            }));
+            runner.start_task(task);
         }
 
-        while let Some(join_result) = currently_running.next().await {
-            match join_result {
-                Ok(Ok(successful_task)) => {
-                    if !dependants.contains_key(&successful_task) {
+        while let Some(finished_task) = runner.next_finished().await {
+            match finished_task.outcome {
+                TaskOutcome::Succesful | TaskOutcome::Skipped => {
+                    if !dependants.contains_key(&finished_task.task_ref) {
                         continue;
                     }
-                    for dependant in &dependants[&successful_task] {
+                    for dependant in &dependants[&finished_task.task_ref] {
                         let waiting_for = waiting
                             .entry(dependant.clone())
                             .and_modify(|count| *count -= 1)
                             .or_default();
                         if *waiting_for == 0 {
                             waiting.remove(dependant);
-
-                            let workspace = Arc::clone(&workspace);
-                            let task = dependant.clone();
-                            let since = opts.since.clone();
-                            let hash_registry = Arc::clone(&hash_registry);
-
-                            let output = outputs
-                                .remove(&task)
-                                .expect("a CommandOutput to exist for every task");
-
-                            currently_running.push(tokio::spawn(async move {
-                                let result = run_task(
-                                    task.lookup(&workspace),
-                                    &workspace,
-                                    output,
-                                    since,
-                                    &hash_registry,
-                                )
-                                .await
-                                .map(|_| task.clone());
-                                result.map_err(|_| task)
-                            }));
+                            runner.start_task(dependant.clone());
                         }
                     }
                 }
-                Ok(Err(failed_task)) => {
+                TaskOutcome::Failed(_) => {
                     // TODO: report the failure somehow.
                     waiting.clear();
-                }
-                Err(join_err) => {
-                    todo!()
                 }
             };
         }
@@ -290,79 +238,13 @@ enum TaskError {
     OuptutError(),
 }
 
-async fn run_task(
-    task: &TaskInfo,
-    workspace: &Workspace,
-    output: CommandOutput,
-    since: Option<String>,
-    hash_registry: &HashRegistry,
-) -> Result<(), TaskError> {
-    let (should_run, input_hash) =
-        block_in_place(|| should_task_run(task, workspace, since, hash_registry))?;
-
-    if !should_run {
-        return Ok(());
-    }
-
-    let mut output = output;
-
-    for command in &task.commands {
-        let mut args = command.split(' ');
-        let command = args
-            .next()
-            .expect("there to be some content in a tasks command");
-
-        let mut child = tokio::process::Command::new(command)
-            .args(args)
-            .current_dir(&task.project.lookup(workspace).root)
-            .stderr(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stdin(Stdio::null())
-            .kill_on_drop(true)
-            .spawn()
-            .map_err(TaskError::CommandError)?;
-
-        child
-            .wait_and_pipe_output(&mut output)
-            .await
-            .map_err(|_| TaskError::OuptutError())?;
-        // TODO: Do something with the result of this...
-    }
-
-    if let Some(input_hash) = input_hash {
-        hash_registry.update_input_hash(task.task_ref(), input_hash);
-    }
-
-    Ok(())
+struct FinishedTask {
+    task_ref: TaskRef,
+    outcome: TaskOutcome,
 }
 
-fn should_task_run(
-    task: &TaskInfo,
-    workspace: &Workspace,
-    since: Option<String>,
-    hash_registry: &HashRegistry,
-) -> Result<(bool, Option<Hash>), TaskError> {
-    let project = task.project.lookup(workspace);
-
-    match since {
-        Some(since) => {
-            let project_root = project.root.clone();
-            let should_run = git::have_files_changed(since, project_root.into())?;
-
-            Ok((should_run, None))
-        }
-        None => {
-            let new_hash = hash_task_inputs(project, task)?;
-            let last_hash = hash_registry
-                .lookup(&task.task_ref())
-                .and_then(|h| h.inputs);
-
-            let should_run = last_hash
-                .as_ref()
-                .map(|last_hash| *last_hash != new_hash)
-                .unwrap_or(true);
-
-            Ok((should_run, Some(new_hash)))
-        }
-    }
+enum TaskOutcome {
+    Skipped,
+    Succesful,
+    Failed(TaskError),
 }
