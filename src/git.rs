@@ -10,7 +10,7 @@ pub enum Mode {
     Main(String),    // base commit, e.g. 'HEAD^1'
 }
 
-#[derive(PartialEq, Error, Debug, miette::Diagnostic)]
+#[derive(PartialEq, Eq, Error, Debug, miette::Diagnostic)]
 pub enum GitError {
     #[error("Cannot find merge base with branch {0}: {1}")]
     MergeBase(String, String), // base branch, error
@@ -25,9 +25,15 @@ pub fn repo_root() -> Result<PathBuf, GitError> {
 }
 
 pub fn files_changed(mode: Mode) -> Result<Vec<PathBuf>, GitError> {
-    let paths = real_impl().diff(mode)?;
+    let paths = real_impl().diff(mode, vec![])?;
 
     Ok(paths.into_iter().map(PathBuf::from).collect())
+}
+
+pub fn have_files_changed(since: String, path: camino::Utf8PathBuf) -> Result<bool, GitError> {
+    let paths = real_impl().diff(Mode::Main(since), vec![path.to_string()])?;
+
+    Ok(!paths.is_empty())
 }
 
 fn real_impl() -> GitImpl<impl FnMut(Command) -> Result<String, String>> {
@@ -86,25 +92,32 @@ where
         }
     }
 
-    fn diff(&mut self, mode: Mode) -> Result<Vec<String>, GitError> {
+    fn diff(&mut self, mode: Mode, files: Vec<String>) -> Result<Vec<String>, GitError> {
         let base = self.diff_base(mode)?;
 
-        self.execute([
+        let mut command = vec![
             "git",
             "diff",
             "--no-commit-id",
             "--name-only",
             "-r",
             base.as_ref(),
-        ])
-        .map(|files| {
-            files
-                .trim_end()
-                .split("\n")
-                .map(|f| f.to_string())
-                .collect()
-        })
-        .map_err(|e| GitError::Diff(e.to_string()))
+        ];
+
+        if !files.is_empty() {
+            command.push("--");
+            command.extend(files.iter().map(|s| -> &str { s.as_ref() }))
+        }
+
+        self.execute(command)
+            .map(|files| {
+                files
+                    .trim_end()
+                    .split('\n')
+                    .map(|f| f.to_string())
+                    .collect()
+            })
+            .map_err(GitError::Diff)
     }
 
     fn execute<'a>(
@@ -193,7 +206,7 @@ mod test {
 
             let mut git = GitImpl::new(mock_exec);
 
-            let actual = git.diff(Mode::Feature("main".to_string()));
+            let actual = git.diff(Mode::Feature("main".to_string()), vec![]);
             let expected = Ok(vec![
                 "one".to_string(),
                 "two".to_string(),
@@ -224,7 +237,44 @@ mod test {
 
             let mut git = GitImpl::new(mock_exec);
 
-            let actual = git.diff(Mode::Main("HEAD^1".to_string()));
+            let actual = git.diff(Mode::Main("HEAD^1".to_string()), vec![]);
+            let expected = Ok(vec![
+                "one".to_string(),
+                "two".to_string(),
+                "three".to_string(),
+            ]);
+
+            assert_eq!(actual, expected);
+            assert_eq!(actual_commands[0], expected_command);
+        }
+
+        #[test]
+        fn diff_with_files() {
+            let mut actual_commands: Vec<Command> = vec![];
+            let expected_command: Vec<String> = vec![
+                "git".into(),
+                "diff".into(),
+                "--no-commit-id".into(),
+                "--name-only".into(),
+                "-r".into(),
+                "HEAD^1".into(),
+                "--".into(),
+                "blah.txt".into(),
+                "blah2.txt".into(),
+            ];
+
+            let mock_exec = |cmd: Command| -> Result<String, String> {
+                actual_commands.push(cmd);
+
+                Ok("one\ntwo\nthree\n".to_string())
+            };
+
+            let mut git = GitImpl::new(mock_exec);
+
+            let actual = git.diff(
+                Mode::Main("HEAD^1".to_string()),
+                vec!["blah.txt".into(), "blah2.txt".into()],
+            );
             let expected = Ok(vec![
                 "one".to_string(),
                 "two".to_string(),

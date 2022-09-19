@@ -10,6 +10,7 @@ use self::graph::WorkspaceGraph;
 mod graph;
 mod paths;
 
+use camino::Utf8Path;
 pub use paths::WorkspacePath;
 
 pub struct Workspace {
@@ -101,10 +102,20 @@ impl Workspace {
         self.project_map.values()
     }
 
-    pub fn lookup(&self, project_ref: &ProjectRef) -> &ProjectInfo {
+    pub fn lookup_project(&self, name: impl AsRef<str>) -> Option<&ProjectInfo> {
+        self.project_map.get(name.as_ref())
+    }
+
+    pub fn root_path(&self) -> &Utf8Path {
+        self.info.root_path.as_ref()
+    }
+}
+
+impl ProjectRef {
+    pub fn lookup<'a>(&self, workspace: &'a Workspace) -> &'a ProjectInfo {
         // TODO: This basically assumes a ProjectRef is always valid.
         // Probably need to enforce that with types somehow or make this return an option
-        &self.project_map[&project_ref.0]
+        &workspace.project_map[&self.0]
     }
 }
 
@@ -141,12 +152,22 @@ pub struct ProjectRef(String);
 
 impl ProjectRef {
     pub fn name(&self) -> &str {
-        return &self.0;
+        &self.0
     }
 }
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct TaskRef(ProjectRef, String);
+
+impl TaskRef {
+    pub fn project_name(&self) -> &str {
+        &self.0 .0
+    }
+
+    pub fn task_name(&self) -> &str {
+        &self.1
+    }
+}
 
 // TODO: Think about sticking this in an arc or similar rather than clone
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]

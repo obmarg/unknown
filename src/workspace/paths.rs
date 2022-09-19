@@ -52,6 +52,18 @@ impl AsRef<std::path::Path> for WorkspacePath {
     }
 }
 
+impl AsRef<Utf8Path> for WorkspacePath {
+    fn as_ref(&self) -> &Utf8Path {
+        self.absolute.as_ref()
+    }
+}
+
+impl From<WorkspacePath> for Utf8PathBuf {
+    fn from(val: WorkspacePath) -> Self {
+        val.absolute
+    }
+}
+
 impl std::fmt::Display for WorkspacePath {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.relative)
