@@ -1,12 +1,11 @@
 use std::collections::{HashMap, HashSet};
 
 use petgraph::{
-    data::Build,
     stable_graph::NodeIndex,
     visit::{DfsPostOrder, EdgeFiltered, Walker},
 };
 
-use super::{ProjectInfo, ProjectRef, TaskDependencySpec, TaskRef, Workspace, WorkspaceInfo};
+use super::{ProjectInfo, ProjectRef, TaskDependencySpec, TaskRef, WorkspaceInfo};
 
 type Graph = petgraph::Graph<WorkspaceNode, WorkspaceEdge>;
 

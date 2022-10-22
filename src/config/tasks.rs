@@ -25,7 +25,7 @@ pub struct TaskDefinition {
     pub dependencies: Vec<TaskDependency>,
 
     #[knuffel(children(name = "inputs"))]
-    input_blocks: Vec<InputBlock>,
+    pub input_blocks: Vec<InputBlock>,
 }
 
 #[derive(knuffel::Decode, Debug)]
@@ -44,23 +44,32 @@ pub struct TaskDependency {
 }
 
 #[derive(knuffel::Decode, Debug)]
-struct InputBlock {
+pub struct InputBlock {
     #[knuffel(children(name = "file"), unwrap(argument))]
-    files: Vec<String>,
+    pub files: Vec<String>,
 
     #[knuffel(children(name = "dir"))]
-    dirs: Vec<DirInput>,
+    pub dirs: Vec<DirInput>,
 
     #[knuffel(children(name = "env_var"), unwrap(argument))]
-    env_vars: Vec<String>,
+    pub env_vars: Vec<String>,
 
-    #[knuffel(children(name = "command_output"), unwrap(argument))]
-    command_outputs: Vec<String>,
+    #[knuffel(children(name = "command"), unwrap(argument))]
+    pub commands: Vec<String>,
     // TODO: Stuff goes here..
 }
 
 #[derive(knuffel::Decode, Debug)]
-struct DirInput {
+pub struct DirInput {
+    #[knuffel(argument)]
+    path: String,
+
+    #[knuffel(property)]
+    glob: Option<String>,
+}
+
+#[derive(knuffel::Decode, Debug)]
+pub struct Command {
     #[knuffel(argument)]
     path: String,
 

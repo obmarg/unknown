@@ -56,7 +56,7 @@ tasks {
 
             // Specify the output of a command as an input
             // TODO: think of a better name for this one.
-            command_output ""
+            command ""
         }
 
         // Outputs are a tricky one though aren't they.  Lets think about

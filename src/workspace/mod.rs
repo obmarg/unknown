@@ -77,6 +77,7 @@ impl Workspace {
                         .iter()
                         .map(TaskDependency::from_config)
                         .collect(),
+                    inputs: TaskInputs::from_config(&task.input_blocks, &workspace_info.root_path),
                 })
             }
 
@@ -176,6 +177,7 @@ pub struct TaskInfo {
     pub name: String,
     pub commands: Vec<String>,
     pub dependencies: Vec<TaskDependency>,
+    pub inputs: TaskInputs,
 }
 
 impl TaskInfo {
@@ -204,6 +206,47 @@ impl TaskDependency {
             task: TaskDependencySpec::NamedTask(config.task.clone()),
             target_self: config.include_this_package.unwrap_or(true),
             target_deps: config.for_project_deps.unwrap_or_default(),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Default, Hash, PartialEq, Eq)]
+pub struct TaskInputs {
+    pub files: Vec<WorkspacePath>,
+    pub dirs: Vec<WorkspacePath>,
+    pub env_vars: Vec<String>,
+    pub commands: Vec<String>,
+}
+
+impl TaskInputs {
+    pub fn from_config(
+        inputs: &[config::InputBlock],
+        workspace_path: &WorkspacePath,
+    ) -> TaskInputs {
+        let mut this = TaskInputs::default();
+        for input in inputs {
+            this.load_block(input, workspace_path)
+        }
+        this
+    }
+
+    fn load_block(&mut self, inputs: &config::InputBlock, workspace_path: &WorkspacePath) {
+        for file in &inputs.files {
+            self.files.push(workspace_path.subpath(file))
+        }
+
+        for _dir in &inputs.dirs {
+            todo!("Haven't implemented directory input support yet");
+        }
+
+        for _var in &inputs.env_vars {
+            self.env_vars.push(_var.to_owned());
+            todo!("Haven't implemented env var input support yet");
+        }
+
+        for _command in &inputs.commands {
+            self.commands.push(_command.to_owned());
+            todo!("Haven't implemented command input support yet");
         }
     }
 }
