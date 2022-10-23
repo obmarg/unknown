@@ -1,0 +1,10 @@
+---
+source: src/config/loader/tests.rs
+assertion_line: 35
+expression: report
+---
+
+  × Error importing a task
+  ╰─▶ Couldn't load project/missing.nabs: No such file or directory (os error
+      2)
+

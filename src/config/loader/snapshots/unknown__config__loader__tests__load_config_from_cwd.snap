@@ -1,0 +1,94 @@
+---
+source: src/config/loader/tests.rs
+assertion_line: 7
+expression: "load_config_from_path(\"sample-monorepo/\".into())"
+---
+Ok(
+    (
+        WorkspaceFile {
+            workspace_root: "/Users/graeme/src/unknown/sample-monorepo",
+            config: WorkspaceDefinition {
+                name: "my-workspace",
+                project_paths: [
+                    "**",
+                ],
+            },
+        },
+        [
+            ProjectFile {
+                project_root: "projects/a-lib",
+                config: ProjectDefinition {
+                    project: "a-lib",
+                    dependencies: DependencyBlock {
+                        projects: [],
+                        paths: [],
+                        imports: [],
+                    },
+                    tasks: TaskBlock {
+                        imports: [],
+                        tasks: [
+                            TaskDefinition {
+                                name: "build",
+                                commands: [
+                                    "echo \"build-a-lib\"",
+                                ],
+                                dependencies: [],
+                                input_blocks: [],
+                            },
+                            TaskDefinition {
+                                name: "hello",
+                                commands: [
+                                    "echo \"hello\"",
+                                ],
+                                dependencies: [],
+                                input_blocks: [],
+                            },
+                        ],
+                    },
+                },
+            },
+            ProjectFile {
+                project_root: "projects/a-service",
+                config: ProjectDefinition {
+                    project: "a-service",
+                    dependencies: DependencyBlock {
+                        projects: [
+                            "a-lib",
+                        ],
+                        paths: [],
+                        imports: [],
+                    },
+                    tasks: TaskBlock {
+                        imports: [],
+                        tasks: [
+                            TaskDefinition {
+                                name: "build",
+                                commands: [
+                                    "echo \"build-a-service\"",
+                                ],
+                                dependencies: [
+                                    TaskDependency {
+                                        task: "build",
+                                        for_project_deps: Some(
+                                            true,
+                                        ),
+                                        include_this_package: None,
+                                    },
+                                ],
+                                input_blocks: [],
+                            },
+                            TaskDefinition {
+                                name: "bye",
+                                commands: [
+                                    "echo \"bye\"",
+                                ],
+                                dependencies: [],
+                                input_blocks: [],
+                            },
+                        ],
+                    },
+                },
+            },
+        ],
+    ),
+)

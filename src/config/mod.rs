@@ -6,19 +6,48 @@ mod workspace;
 use std::path::{Path, PathBuf};
 
 pub use self::{
-    loader::load_config_from_cwd, project::ProjectDefinition, tasks::*,
+    loader::load_config_from_path, project::ProjectDefinition, tasks::*,
     workspace::WorkspaceDefinition,
 };
 
 #[cfg(test)]
 mod tests;
 
-// TODO: flesh this out
-pub struct ParsingError(knuffel::Error);
+#[derive(Debug, thiserror::Error)]
+#[error("Error parsing {1}")]
+pub struct ParsingError(knuffel::Error, std::path::PathBuf);
 
-impl ParsingError {
-    pub fn into_report(self) -> miette::Report {
-        miette::Report::new(self.0)
+impl miette::Diagnostic for ParsingError {
+    fn code<'a>(&'a self) -> Option<Box<dyn std::fmt::Display + 'a>> {
+        self.0.code()
+    }
+
+    fn severity(&self) -> Option<miette::Severity> {
+        self.0.severity()
+    }
+
+    fn help<'a>(&'a self) -> Option<Box<dyn std::fmt::Display + 'a>> {
+        self.0.help()
+    }
+
+    fn url<'a>(&'a self) -> Option<Box<dyn std::fmt::Display + 'a>> {
+        self.0.url()
+    }
+
+    fn source_code(&self) -> Option<&dyn miette::SourceCode> {
+        self.0.source_code()
+    }
+
+    fn labels(&self) -> Option<Box<dyn Iterator<Item = miette::LabeledSpan> + '_>> {
+        self.0.labels()
+    }
+
+    fn related<'a>(&'a self) -> Option<Box<dyn Iterator<Item = &'a dyn miette::Diagnostic> + 'a>> {
+        self.0.related()
+    }
+
+    fn diagnostic_source(&self) -> Option<&dyn miette::Diagnostic> {
+        self.0.diagnostic_source()
     }
 }
 
@@ -36,7 +65,10 @@ pub fn parse_project_file(path: &Path, contents: &str) -> Result<ProjectFile, Pa
             .as_ref(),
         contents,
     )
-    .map_err(ParsingError)?;
+    .map_err(|e| ParsingError(e, path.to_owned()))?;
+
+    // TODO: At some point want to validate the data in the file.
+    // e.g. names can't have commas or slashes in them etc.
 
     Ok(ProjectFile {
         project_root: path
@@ -61,7 +93,10 @@ pub fn parse_workspace_file(path: &Path, contents: &str) -> Result<WorkspaceFile
             .as_ref(),
         contents,
     )
-    .map_err(ParsingError)?;
+    .map_err(|e| {
+        let filename = std::path::PathBuf::from(path.file_name().unwrap());
+        ParsingError(e, filename)
+    })?;
 
     Ok(WorkspaceFile {
         workspace_root: path
@@ -85,7 +120,7 @@ pub fn parse_task_file(path: &Path, contents: &str) -> Result<TaskFile, ParsingE
             .as_ref(),
         contents,
     )
-    .map_err(ParsingError)?;
+    .map_err(|e| ParsingError(e, path.to_owned()))?;
 
     Ok(TaskFile { config })
 }

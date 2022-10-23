@@ -1,0 +1,11 @@
+---
+source: src/config/loader/tests.rs
+assertion_line: 21
+expression: report
+---
+
+  × Error parsing project/project.kdl
+
+Error: 
+  × child node `project` is required
+

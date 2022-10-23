@@ -6,6 +6,8 @@ dependencies {
 }
 
 tasks {
+    import "bye.nabs"
+
     task "build" {
         dependency task="build" for-project-deps=true
         command r#"echo "build-a-service""#

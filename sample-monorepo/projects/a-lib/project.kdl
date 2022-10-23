@@ -1,6 +1,8 @@
 project "a-lib"
 
 tasks {
+    import "/tasks/hello.nabs"
+
     task "build" {
         command r#"echo "build-a-lib""#
     }

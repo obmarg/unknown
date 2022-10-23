@@ -1,6 +1,6 @@
 use clap::Parser;
 
-use crate::{config::load_config_from_cwd, workspace::Workspace};
+use crate::{config::load_config_from_path, workspace::Workspace};
 
 mod changed_command;
 mod filters;
@@ -30,7 +30,9 @@ pub fn run() -> miette::Result<()> {
 }
 
 fn load_workspace() -> Result<Workspace, miette::Report> {
-    let (workspace_file, project_files) = load_config_from_cwd()?;
+    let (workspace_file, project_files) = load_config_from_path(
+        std::env::current_dir().expect("couldn't determine current directory"),
+    )?;
 
     // TODO: workspace::new should return an error probably
     Ok(Workspace::new(workspace_file, project_files))

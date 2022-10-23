@@ -26,7 +26,7 @@ impl std::fmt::Display for ProjectFilter {
         let mut first = true;
         for spec in &self.specs {
             if !first {
-                write!(f, ",");
+                write!(f, ",")?;
             }
             write!(f, "{spec}")?;
             first = false;
