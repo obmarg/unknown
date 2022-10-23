@@ -1,13 +1,7 @@
 #[derive(knuffel::Decode, Debug, Default)]
 pub struct TaskBlock {
-    #[knuffel(children(name = "import_dir"), unwrap(argument))]
-    dir_imports: Vec<String>,
-
-    #[knuffel(children(name = "import_file"), unwrap(argument))]
-    file_imports: Vec<String>,
-
-    #[knuffel(children(name = "import_template"), unwrap(argument))]
-    template_imports: Vec<String>,
+    #[knuffel(children(name = "import"), unwrap(argument))]
+    pub(super) imports: Vec<String>,
 
     #[knuffel(children(name = "task"))]
     pub tasks: Vec<TaskDefinition>,

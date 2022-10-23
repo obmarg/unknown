@@ -1,0 +1,22 @@
+---
+source: src/config/tests.rs
+assertion_line: 42
+expression: "parse_task_file(&PathBuf::from(\"blah/task.kdl\"),\n        &str_data).map_err(|e| miette::Report::new(e.0))"
+---
+Ok(
+    TaskFile {
+        config: TaskBlock {
+            imports: [],
+            tasks: [
+                TaskDefinition {
+                    name: "xyz",
+                    commands: [
+                        "cargo build",
+                    ],
+                    dependencies: [],
+                    input_blocks: [],
+                },
+            ],
+        },
+    },
+)

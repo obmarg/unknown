@@ -29,7 +29,7 @@ pub struct ProjectFile {
 }
 
 pub fn parse_project_file(path: &Path, contents: &str) -> Result<ProjectFile, ParsingError> {
-    let config = knuffel::parse(
+    let config = knuffel::parse::<ProjectDefinition>(
         path.file_name()
             .expect("project file path to have a filename")
             .to_string_lossy()
@@ -70,4 +70,22 @@ pub fn parse_workspace_file(path: &Path, contents: &str) -> Result<WorkspaceFile
             .to_owned(),
         config,
     })
+}
+
+#[derive(Debug)]
+pub struct TaskFile {
+    pub config: tasks::TaskBlock,
+}
+
+pub fn parse_task_file(path: &Path, contents: &str) -> Result<TaskFile, ParsingError> {
+    let config = knuffel::parse(
+        path.file_name()
+            .expect("workspace file path to have a filename")
+            .to_string_lossy()
+            .as_ref(),
+        contents,
+    )
+    .map_err(ParsingError)?;
+
+    Ok(TaskFile { config })
 }

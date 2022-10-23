@@ -25,14 +25,9 @@ Ok(
                 ],
             },
             tasks: TaskBlock {
-                dir_imports: [
-                    ".tasks",
-                ],
-                file_imports: [
-                    ".tasks",
-                ],
-                template_imports: [
-                    "blah-de-blah",
+                imports: [
+                    "/.tasks/*",
+                    ".tasks/my_task",
                 ],
                 tasks: [
                     TaskDefinition {
@@ -69,7 +64,7 @@ Ok(
                                 env_vars: [
                                     "xyz",
                                 ],
-                                command_outputs: [
+                                commands: [
                                     "",
                                 ],
                             },

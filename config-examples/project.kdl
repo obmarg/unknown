@@ -14,14 +14,14 @@ dependencies {
 // Would at least knock one annoying indentation off this...
 tasks {
     // Could maybe have a way to specify a task directory
-    import_dir ".tasks"
+    import "/.tasks/*"
     // and an individual file
-    import_file ".tasks"
+    import ".tasks/my_task"
 
     // A way to import a specific template?
     // These would presumably be named top-level things?
     // Not sure, needs more thought.
-    import_template "blah-de-blah"
+    //import_template "blah-de-blah"
 
     // And also a way to specify a task inline here.
     task "build" {

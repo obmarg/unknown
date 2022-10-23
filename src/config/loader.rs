@@ -1,6 +1,9 @@
 use std::path::{Path, PathBuf};
 
-use super::{parse_project_file, parse_workspace_file, ParsingError, ProjectFile, WorkspaceFile};
+use super::{
+    parse_project_file, parse_task_file, parse_workspace_file, ParsingError, ProjectFile,
+    WorkspaceFile,
+};
 
 pub fn load_config_from_cwd() -> Result<(WorkspaceFile, Vec<ProjectFile>), miette::Report> {
     let workspace_path = find_workspace_file().ok_or(MissingWorkspaceFile)?;
@@ -29,6 +32,7 @@ pub fn load_config_from_cwd() -> Result<(WorkspaceFile, Vec<ProjectFile>), miett
                 &std::fs::read_to_string(f).expect("couldn't read project file"),
             )
             .map_err(ParsingError::into_report)
+            .and_then(|project_file| import_tasks(project_file, &workspace_path))
         })
         .collect::<Result<Vec<_>, _>>()?;
 
@@ -74,4 +78,29 @@ fn find_workspace_file() -> Option<PathBuf> {
     }
 
     None
+}
+
+fn import_tasks(
+    mut project_file: ProjectFile,
+    workspace_root: &Path,
+) -> Result<ProjectFile, miette::Report> {
+    let mut imports = std::mem::take(&mut project_file.config.tasks.imports);
+    while let Some(import) = imports.pop() {
+        let path = match import.starts_with('/') {
+            true => workspace_root.join(import),
+            false => project_file.project_root.join(import),
+        };
+        let parsed = parse_task_file(
+            &path,
+            // TODO: This one definitely shouldn't be an expect, need an actual error.
+            &std::fs::read_to_string(&path).expect("couldn't read task file"),
+        )
+        .map_err(ParsingError::into_report)?;
+
+        imports.extend(parsed.config.imports);
+
+        project_file.config.tasks.tasks.extend(parsed.config.tasks);
+    }
+
+    Ok(project_file)
 }
