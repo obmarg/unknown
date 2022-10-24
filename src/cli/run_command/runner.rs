@@ -43,6 +43,7 @@ impl TaskRunner {
         }
     }
 
+    #[tracing::instrument(skip(self))]
     pub fn start_task(&mut self, task_ref: TaskRef) {
         let workspace = Arc::clone(&self.workspace);
         let since = self.since.clone();
@@ -92,6 +93,7 @@ impl TaskRunner {
         }
     }
 
+    #[tracing::instrument(level = "debug" skip(self))]
     fn dependency_outcome(&self, task_ref: &TaskRef) -> OutcomeSummary {
         let succesful_tasks = task_ref
             .direct_dependencies(&self.workspace)
@@ -107,12 +109,16 @@ impl TaskRunner {
     }
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 enum OutcomeSummary {
     NoChange,
     SomeChange,
 }
 
+#[tracing::instrument(
+    fields(task = %task.task_ref())
+    skip(task, workspace, output, hash_registry)
+)]
 async fn run_task(
     task: &TaskInfo,
     workspace: &Workspace,
@@ -125,6 +131,7 @@ async fn run_task(
         block_in_place(|| should_task_run(task, workspace, since, hash_registry))?;
 
     if !should_run && dependency_outcome == OutcomeSummary::NoChange {
+        tracing::info!("Skipping task");
         return Ok(TaskOutcome::Skipped);
     }
 
@@ -159,6 +166,10 @@ async fn run_task(
     Ok(TaskOutcome::Succesful)
 }
 
+#[tracing::instrument(
+    fields(task = %task.task_ref())
+    skip(task, workspace, hash_registry))
+]
 fn should_task_run(
     task: &TaskInfo,
     workspace: &Workspace,

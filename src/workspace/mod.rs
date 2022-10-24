@@ -1,6 +1,4 @@
-use std::{
-    collections::{HashMap, HashSet},
-};
+use std::collections::{HashMap, HashSet};
 
 use crate::config;
 
@@ -166,6 +164,12 @@ impl TaskRef {
 
     pub fn task_name(&self) -> &str {
         &self.1
+    }
+}
+
+impl std::fmt::Display for TaskRef {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}::{}", self.project_name(), self.task_name())
     }
 }
 

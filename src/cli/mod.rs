@@ -28,6 +28,8 @@ pub enum Command {
 }
 
 pub fn run() -> miette::Result<()> {
+    tracing_subscriber::fmt::init();
+
     let opts = Cli::parse();
     let workspace = load_workspace()?;
 

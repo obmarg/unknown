@@ -43,8 +43,11 @@ pub fn run(workspace: Workspace, opts: RunOpts) -> miette::Result<()> {
     let target_projects = filter_projects(&workspace, opts.filter);
     let tasks = find_tasks(&workspace, &target_projects, opts.tasks);
 
+    tracing::debug!(tasks = ?tasks, "Running tasks");
+
     if tasks.is_empty() {
-        // TODO: log something maybe?
+        // TODO: think about this output, it's not great.
+        println!("No tasks found");
         return Ok(());
     }
 
@@ -84,6 +87,7 @@ pub fn run(workspace: Workspace, opts: RunOpts) -> miette::Result<()> {
         let mut runner = TaskRunner::new(&workspace, opts.since.clone(), outputs, &hash_registry);
 
         for task in ready.drain(0..).rev() {
+            tracing::debug!(%task, "Task has no dependencies, adding to ready list");
             runner.start_task(task);
         }
 
@@ -100,12 +104,14 @@ pub fn run(workspace: Workspace, opts: RunOpts) -> miette::Result<()> {
                             .or_default();
                         if *waiting_for == 0 {
                             waiting.remove(dependant);
+                            tracing::debug!(task = %dependant, "All dependencies finished, adding to ready list");
                             runner.start_task(dependant.clone());
                         }
                     }
                 }
                 TaskOutcome::Failed(_) => {
-                    // TODO: report the failure somehow.
+                    println!("{} failed :(", finished_task.task_ref);
+                    // TODO: better reporting.
                     waiting.clear();
                 }
             };
@@ -133,6 +139,7 @@ pub fn run(workspace: Workspace, opts: RunOpts) -> miette::Result<()> {
     Ok(())
 }
 
+#[tracing::instrument(skip(workspace))]
 fn filter_projects(workspace: &Workspace, filter: Option<ProjectFilter>) -> HashSet<&ProjectInfo> {
     let specs = filter.map(|pf| pf.specs).unwrap_or_default();
     if specs.is_empty() {
@@ -175,6 +182,7 @@ struct TaskAndDeps {
     deps: HashSet<TaskRef>,
 }
 
+#[tracing::instrument(skip(workspace))]
 fn find_tasks<'a>(
     workspace: &'a Workspace,
     target_projects: &HashSet<&'a ProjectInfo>,

@@ -25,11 +25,10 @@ pub enum HashError {
     InvalidPathFound(#[from] camino::FromPathBufError),
 }
 
-pub fn hash_task_inputs(project: &ProjectInfo, task: &TaskInfo) -> Result<Hash, HashError> {
-    // Ok, so for now we just assume the inputs for a task are the files of the project.
-    //
-    // At a later date we can include whether downstream tasks have been run, then
-    // we can build on that to include downstream task otutputs.
+pub fn hash_task_inputs(project: &ProjectInfo, task: &TaskInfo) -> Result<Option<Hash>, HashError> {
+    if task.inputs.is_empty() {
+        return Ok(None);
+    }
 
     // TODO: Could look into using an ignore based parallel iterator here.
     // Or could maybe use rayon?  Not sure.
