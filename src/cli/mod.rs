@@ -6,6 +6,7 @@ mod changed_command;
 mod filters;
 mod projects_command;
 mod run_command;
+mod tasks_command;
 
 #[derive(Parser)]
 pub struct Cli {
@@ -22,6 +23,8 @@ pub enum Command {
     Run(run_command::RunOpts),
     /// Prints information about projects in the workspace (WIP)
     Projects(projects_command::ProjectsOpts),
+    /// Prints information about tasks in the workspace (WIP)
+    Tasks(tasks_command::TasksOpts),
 }
 
 pub fn run() -> miette::Result<()> {
@@ -32,6 +35,7 @@ pub fn run() -> miette::Result<()> {
         Command::Changed(command_opts) => changed_command::run(workspace, command_opts),
         Command::Run(command_opts) => run_command::run(workspace, command_opts),
         Command::Projects(command_opts) => projects_command::run(workspace, command_opts),
+        Command::Tasks(command_opts) => tasks_command::run(workspace, command_opts),
     }
 }
 
