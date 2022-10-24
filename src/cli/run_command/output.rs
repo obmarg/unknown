@@ -1,9 +1,9 @@
 // TODO: make this a submodule of run_command.
-use std::{collections::HashMap, io::Write, iter::Cycle};
+use std::{collections::HashMap, io::Write};
 
 use colored::{Color, Colorize};
 
-use super::TaskAndDeps;
+
 use crate::workspace::{TaskInfo, TaskRef};
 
 pub fn build_command_outputs(tasks: &[&TaskInfo]) -> HashMap<TaskRef, CommandOutput> {

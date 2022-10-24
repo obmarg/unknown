@@ -4,7 +4,7 @@ use tabled::{Table, Tabled};
 
 use crate::{
     git,
-    workspace::{ProjectRef, Workspace, WorkspacePath},
+    workspace::{Workspace, WorkspacePath},
 };
 
 #[derive(clap::Parser)]

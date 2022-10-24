@@ -1,7 +1,7 @@
 use std::process::ExitStatus;
 
 use async_trait::async_trait;
-use miette::IntoDiagnostic;
+
 use tokio::io::AsyncReadExt;
 
 use super::output::CommandOutput;

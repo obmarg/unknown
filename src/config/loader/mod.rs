@@ -1,9 +1,9 @@
-use std::path::{self, Path, PathBuf};
+use std::path::{Path, PathBuf};
 
-use miette::Context;
+
 
 use super::{
-    parse_project_file, parse_task_file, parse_workspace_file, ParsingError, ProjectFile,
+    parse_project_file, parse_task_file, parse_workspace_file, ProjectFile,
     WorkspaceFile,
 };
 

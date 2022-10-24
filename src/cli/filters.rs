@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use chumsky::{prelude::*, primitive::Filter};
+use chumsky::{prelude::*};
 
 #[derive(Debug)]
 pub struct ProjectFilter {

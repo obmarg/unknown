@@ -1,34 +1,16 @@
 use std::{
     collections::{HashMap, HashSet},
-    io::{Read, Write},
-    process::Stdio,
     sync::Arc,
 };
 
-use camino::Utf8PathBuf;
-use futures::{stream::FuturesUnordered, StreamExt};
-use rayon::prelude::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
-use tabled::{Table, Tabled};
-use tokio::{
-    io::AsyncReadExt,
-    runtime::Runtime,
-    task::{block_in_place, spawn_blocking},
-};
+use tokio::runtime::Runtime;
 
 use crate::{
-    git,
-    hashing::{hash_task_inputs, Hash, HashError, HashRegistry},
-    workspace::{
-        self, ProjectInfo, ProjectRef, TaskDependencySpec, TaskInfo, TaskRef, Workspace,
-        WorkspacePath,
-    },
+    hashing::{HashError, HashRegistry},
+    workspace::{ProjectInfo, TaskRef, Workspace},
 };
 
-use self::{
-    child_ext::ChildExt,
-    output::{build_command_outputs, CommandOutput},
-    runner::TaskRunner,
-};
+use self::{output::build_command_outputs, runner::TaskRunner};
 use super::filters::ProjectFilter;
 
 mod child_ext;
