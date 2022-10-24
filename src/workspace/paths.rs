@@ -21,7 +21,8 @@ impl WorkspacePath {
         // TODO: Check if path is absolute
         let absolute = Utf8Path::from_path(path.as_ref())
             .expect("a utf8 path")
-            .to_owned();
+            .canonicalize_utf8()
+            .expect("to be able to canonicalize subpaths");
 
         let relative = absolute
             .strip_prefix(&self.absolute)
