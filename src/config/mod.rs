@@ -6,7 +6,9 @@ mod workspace;
 use std::path::{Path, PathBuf};
 
 pub use self::{
-    loader::load_config_from_path, project::ProjectDefinition, tasks::*,
+    loader::load_config_from_path,
+    project::{DependencyBlock, ProjectDefinition},
+    tasks::*,
     workspace::WorkspaceDefinition,
 };
 

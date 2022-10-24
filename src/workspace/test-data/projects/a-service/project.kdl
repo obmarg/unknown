@@ -1,0 +1,15 @@
+project "a-service"
+
+// Guess dependencies could be also be a block?
+dependencies {
+    project "a-lib"
+}
+
+tasks {
+    import "bye.nabs"
+
+    task "build" {
+        dependency task="build" for-project-deps=true
+        command r#"echo "build-a-service""#
+    }
+}

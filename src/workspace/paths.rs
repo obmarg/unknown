@@ -18,9 +18,16 @@ impl WorkspacePath {
     }
 
     pub fn subpath(&self, path: impl AsRef<std::path::Path>) -> Self {
-        // TODO: Check if path is absolute
-        let absolute = Utf8Path::from_path(path.as_ref())
+        let path = Utf8Path::from_path(path.as_ref())
             .expect("a utf8 path")
+            .to_owned();
+
+        let absolute = match path.is_absolute() {
+            true => path,
+            false => self.absolute.join(path),
+        };
+
+        let absolute = absolute
             .canonicalize_utf8()
             .expect("to be able to canonicalize subpaths");
 

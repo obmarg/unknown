@@ -7,6 +7,9 @@ use self::graph::WorkspaceGraph;
 mod graph;
 mod paths;
 
+#[cfg(test)]
+mod tests;
+
 use camino::Utf8Path;
 pub use paths::WorkspacePath;
 

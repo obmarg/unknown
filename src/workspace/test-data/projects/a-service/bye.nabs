@@ -1,0 +1,3 @@
+task "bye" {
+    command r#"echo "bye""#
+}

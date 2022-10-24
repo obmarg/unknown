@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use petgraph::{
     stable_graph::NodeIndex,
-    visit::{DfsPostOrder, EdgeFiltered, Walker},
+    visit::{DfsPostOrder, EdgeFiltered, IntoNeighbors, Walker},
 };
 
 use super::{ProjectInfo, ProjectRef, TaskDependencySpec, TaskRef, WorkspaceInfo};
@@ -200,22 +200,7 @@ impl TaskRef {
             matches!(edge.weight(), WorkspaceEdge::TaskDependsOn)
         });
 
-        workspace
-            .graph
-            .neighbors(workspace.task_indices[self])
-            .filter_map(|index| workspace.lookup_task(index))
-            .collect()
-    }
-
-    pub fn direct_dependants(&self, workspace: &super::Workspace) -> HashSet<TaskRef> {
-        let workspace = &workspace.graph;
-
-        let filtered_graph = EdgeFiltered::from_fn(&workspace.graph, |edge| {
-            matches!(edge.weight(), WorkspaceEdge::TaskDependendedOnBy)
-        });
-
-        workspace
-            .graph
+        filtered_graph
             .neighbors(workspace.task_indices[self])
             .filter_map(|index| workspace.lookup_task(index))
             .collect()
