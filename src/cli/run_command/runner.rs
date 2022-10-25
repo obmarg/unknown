@@ -163,6 +163,12 @@ async fn run_task(
             .map_err(|_| TaskError::OutputError())?;
 
         tracing::debug!(command=%command, exit_code=exit_status.code(), "Command finished");
+
+        if !exit_status.success() {
+            tracing::debug!(command=%command, "Command failed, marking task as failed");
+            // TODO: this error type is not correct, make a new one.
+            return Ok(TaskOutcome::Failed(TaskError::OutputError()));
+        }
     }
 
     if let Some(input_hash) = input_hash {
