@@ -3,7 +3,6 @@ use std::{collections::HashMap, io::Write};
 
 use colored::{Color, Colorize};
 
-
 use crate::workspace::{TaskInfo, TaskRef};
 
 pub fn build_command_outputs(tasks: &[&TaskInfo]) -> HashMap<TaskRef, CommandOutput> {

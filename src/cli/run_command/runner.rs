@@ -156,7 +156,7 @@ async fn run_task(
         child
             .wait_and_pipe_output(&mut output)
             .await
-            .map_err(|_| TaskError::OuptutError())?;
+            .map_err(|_| TaskError::OutputError())?;
     }
 
     if let Some(input_hash) = input_hash {

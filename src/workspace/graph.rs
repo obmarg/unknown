@@ -92,7 +92,7 @@ impl WorkspaceGraph {
                                 self.graph.add_edge(
                                     *target_index,
                                     current_task_index,
-                                    WorkspaceEdge::TaskDependendedOnBy,
+                                    WorkspaceEdge::TaskDependedOnBy,
                                 );
                             }
                         }
@@ -220,6 +220,9 @@ pub enum WorkspaceEdge {
     ProjectDependsOn,
     ProjectDependedOnBy,
     TaskDependsOn,
-    TaskDependendedOnBy,
+    TaskDependedOnBy,
     HasTask,
 }
+
+// TODO: Some tests of this graph stuff would probably not go amiss (or
+// more thorough workspace tests...)

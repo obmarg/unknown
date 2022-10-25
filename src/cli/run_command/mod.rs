@@ -225,7 +225,7 @@ enum TaskError {
     // InvalidPathFound(#[from] camino::FromPathBufError),
     #[error("Error reading command output")]
     // TODO: Add fields to this.
-    OuptutError(),
+    OutputError(),
 }
 
 struct FinishedTask {
