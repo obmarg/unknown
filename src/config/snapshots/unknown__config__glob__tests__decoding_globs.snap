@@ -1,0 +1,129 @@
+---
+source: src/config/glob.rs
+assertion_line: 81
+expression: result
+---
+TestStruct {
+    paths: [
+        Glob(
+            Glob {
+                glob: "hello/**",
+                re: "(?-u)^hello/.*$",
+                opts: GlobOptions {
+                    case_insensitive: false,
+                    literal_separator: false,
+                    backslash_escape: true,
+                },
+                tokens: Tokens(
+                    [
+                        Literal(
+                            'h',
+                        ),
+                        Literal(
+                            'e',
+                        ),
+                        Literal(
+                            'l',
+                        ),
+                        Literal(
+                            'l',
+                        ),
+                        Literal(
+                            'o',
+                        ),
+                        RecursiveSuffix,
+                    ],
+                ),
+            },
+        ),
+        Glob(
+            Glob {
+                glob: "**",
+                re: "(?-u)^.*$",
+                opts: GlobOptions {
+                    case_insensitive: false,
+                    literal_separator: false,
+                    backslash_escape: true,
+                },
+                tokens: Tokens(
+                    [
+                        RecursivePrefix,
+                    ],
+                ),
+            },
+        ),
+        Glob(
+            Glob {
+                glob: "*.txt",
+                re: "(?-u)^.*\\.txt$",
+                opts: GlobOptions {
+                    case_insensitive: false,
+                    literal_separator: false,
+                    backslash_escape: true,
+                },
+                tokens: Tokens(
+                    [
+                        ZeroOrMore,
+                        Literal(
+                            '.',
+                        ),
+                        Literal(
+                            't',
+                        ),
+                        Literal(
+                            'x',
+                        ),
+                        Literal(
+                            't',
+                        ),
+                    ],
+                ),
+            },
+        ),
+        Glob(
+            Glob {
+                glob: "a_file.txt",
+                re: "(?-u)^a_file\\.txt$",
+                opts: GlobOptions {
+                    case_insensitive: false,
+                    literal_separator: false,
+                    backslash_escape: true,
+                },
+                tokens: Tokens(
+                    [
+                        Literal(
+                            'a',
+                        ),
+                        Literal(
+                            '_',
+                        ),
+                        Literal(
+                            'f',
+                        ),
+                        Literal(
+                            'i',
+                        ),
+                        Literal(
+                            'l',
+                        ),
+                        Literal(
+                            'e',
+                        ),
+                        Literal(
+                            '.',
+                        ),
+                        Literal(
+                            't',
+                        ),
+                        Literal(
+                            'x',
+                        ),
+                        Literal(
+                            't',
+                        ),
+                    ],
+                ),
+            },
+        ),
+    ],
+}

@@ -1,13 +1,17 @@
 mod registry;
 
+#[cfg(test)]
+mod tests;
+
 use std::io::Read;
 
 use camino::Utf8PathBuf;
+use globset::{Glob, GlobSetBuilder};
 use rayon::prelude::*;
 
 pub use registry::{HashRegistry, HashRegistryLoadError};
 
-use crate::workspace::{ProjectInfo, TaskInfo};
+use crate::workspace::{ProjectInfo, TaskInfo, WorkspacePath};
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Copy, Default)]
 pub struct TaskHashes {
@@ -30,20 +34,49 @@ pub fn hash_task_inputs(project: &ProjectInfo, task: &TaskInfo) -> Result<Option
         return Ok(None);
     }
 
+    let mut hashes = Vec::with_capacity(task.inputs.len());
+    hash_file_inputs(&project.root, &task.inputs.paths, &mut hashes)?;
+    hash_env_vars(project, task, &mut hashes)?;
+    hash_commands(project, task, &mut hashes)?;
+
+    let mut hasher = blake3::Hasher::new();
+    for hash in hashes {
+        hasher.update(hash.as_bytes());
+    }
+    let final_hash = hasher.finalize();
+
+    Ok(Some(Hash(*final_hash.as_bytes())))
+}
+
+fn hash_file_inputs(
+    project_root: &WorkspacePath,
+    globs: &[Glob],
+    hashes: &mut Vec<blake3::Hash>,
+) -> Result<(), HashError> {
+    if globs.is_empty() {
+        return Ok(());
+    }
+
     // TODO: Could look into using an ignore based parallel iterator here.
     // Or could maybe use rayon?  Not sure.
 
+    let mut builder = GlobSetBuilder::new();
+    for glob in globs {
+        builder.add(glob.clone());
+    }
+    let globset = builder.build().expect("the globset build to succeed");
+
     // TODO: Check if files is always sorted.
     // If it's not we'll need to sort it so we get consistent hashes.
-    let files = ignore::WalkBuilder::new(project.root.clone())
+    let files = ignore::WalkBuilder::new(project_root)
         .hidden(false)
         .build()
         .filter_map(|f| f.ok())
+        .filter(|entry| globset.is_match(entry.path()))
         .filter(|f| f.path().is_file())
         .map(|f| Utf8PathBuf::try_from(f.into_path()))
         .collect::<Result<Vec<_>, _>>()?;
 
-    let mut file_hashes = Vec::with_capacity(files.len());
     files
         .into_par_iter()
         .map(|path| {
@@ -59,13 +92,29 @@ pub fn hash_task_inputs(project: &ProjectInfo, task: &TaskInfo) -> Result<Option
             }
             hasher.finalize()
         })
-        .collect_into_vec(&mut file_hashes);
+        .collect_into_vec(hashes);
 
-    let mut hasher = blake3::Hasher::new();
-    for hash in file_hashes {
-        hasher.update(hash.as_bytes());
+    Ok(())
+}
+
+pub fn hash_env_vars(
+    _project: &ProjectInfo,
+    task: &TaskInfo,
+    #[allow(clippy::ptr_arg)] _hashes: &mut Vec<blake3::Hash>,
+) -> Result<(), HashError> {
+    if !task.inputs.env_vars.is_empty() {
+        todo!("Need to implement env var hashing")
     }
-    let final_hash = hasher.finalize();
+    Ok(())
+}
 
-    Ok(Hash(*final_hash.as_bytes()))
+pub fn hash_commands(
+    _project: &ProjectInfo,
+    task: &TaskInfo,
+    #[allow(clippy::ptr_arg)] _hashes: &mut Vec<blake3::Hash>,
+) -> Result<(), HashError> {
+    if !task.inputs.commands.is_empty() {
+        todo!("Need to implement command hashing")
+    }
+    Ok(())
 }

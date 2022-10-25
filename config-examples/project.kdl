@@ -42,13 +42,10 @@ tasks {
 
         inputs {
             // Specify a file as an input
-            file "whatever"
+            path "whatever.txt"
 
-            // Specify a whole directory as an input
-            dir "whatever"
-
-            // Specify a dir with a glob as an input
-            dir "whatever" glob="*"
+            // Specify a whole directory tree as an input
+            path "whatever/**"
 
             // Specify an environment variable as an input
             // TODO: Think on the name for this one as well.

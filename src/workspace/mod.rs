@@ -11,6 +11,7 @@ mod paths;
 mod tests;
 
 use camino::Utf8Path;
+use globset::Glob;
 pub use paths::WorkspacePath;
 
 pub struct Workspace {
@@ -216,15 +217,32 @@ impl TaskDependency {
     }
 }
 
-#[derive(Clone, Debug, Default, Hash, PartialEq, Eq)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct TaskInputs {
-    pub files: Vec<WorkspacePath>,
-    pub dirs: Vec<WorkspacePath>,
+    pub paths: Vec<Glob>,
     pub env_vars: Vec<String>,
     pub commands: Vec<String>,
 }
 
+impl Default for TaskInputs {
+    fn default() -> Self {
+        Self {
+            paths: vec![],
+            env_vars: Default::default(),
+            commands: Default::default(),
+        }
+    }
+}
+
 impl TaskInputs {
+    pub fn is_empty(&self) -> bool {
+        self.paths.is_empty() && self.env_vars.is_empty() && self.commands.is_empty()
+    }
+
+    pub fn len(&self) -> usize {
+        self.paths.len() + self.env_vars.len() + self.commands.len()
+    }
+
     pub fn from_config(
         inputs: &[config::InputBlock],
         workspace_path: &WorkspacePath,
@@ -237,12 +255,8 @@ impl TaskInputs {
     }
 
     fn load_block(&mut self, inputs: &config::InputBlock, workspace_path: &WorkspacePath) {
-        for file in &inputs.files {
-            self.files.push(workspace_path.subpath(file))
-        }
-
-        for _dir in &inputs.dirs {
-            todo!("Haven't implemented directory input support yet");
+        for path in &inputs.paths {
+            self.paths.push(path.clone().into_inner());
         }
 
         for _var in &inputs.env_vars {

@@ -5,6 +5,13 @@ use crate::config::load_config_from_path;
 use super::*;
 
 #[test]
+fn snapshot_sample_monorepo() {
+    let (workspace, projects) = load_config_from_path("src/workspace/test-data/".into()).unwrap();
+
+    insta::assert_debug_snapshot!(Workspace::new(workspace, projects))
+}
+
+#[test]
 fn test_task_ref_direct_dependencies() {
     let workspace = a_workspace();
 

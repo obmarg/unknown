@@ -1,3 +1,5 @@
+use super::Glob;
+
 #[derive(knuffel::Decode, Debug, Default)]
 pub struct TaskBlock {
     #[knuffel(children(name = "import"), unwrap(argument))]
@@ -39,11 +41,8 @@ pub struct TaskDependency {
 
 #[derive(knuffel::Decode, Debug)]
 pub struct InputBlock {
-    #[knuffel(children(name = "file"), unwrap(argument))]
-    pub files: Vec<String>,
-
-    #[knuffel(children(name = "dir"))]
-    pub dirs: Vec<DirInput>,
+    #[knuffel(children(name = "path"), unwrap(argument))]
+    pub paths: Vec<Glob>,
 
     #[knuffel(children(name = "env_var"), unwrap(argument))]
     pub env_vars: Vec<String>,

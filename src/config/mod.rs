@@ -1,3 +1,4 @@
+mod glob;
 mod loader;
 mod project;
 mod tasks;
@@ -6,6 +7,7 @@ mod workspace;
 use std::path::{Path, PathBuf};
 
 pub use self::{
+    glob::Glob,
     loader::load_config_from_path,
     project::{DependencyBlock, ProjectDefinition},
     tasks::*,

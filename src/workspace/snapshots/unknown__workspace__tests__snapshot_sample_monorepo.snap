@@ -1,0 +1,112 @@
+---
+source: src/workspace/tests.rs
+assertion_line: 11
+expression: "Workspace::new(workspace, projects)"
+---
+Workspace {
+    info: WorkspaceInfo {
+        name: "my-workspace",
+        project_paths: [
+            "**",
+        ],
+        root_path: WorkspacePath {
+            absolute: "/Users/graeme/src/unknown/src/workspace/test-data",
+            relative: "",
+        },
+    },
+    project_map: {
+        "a-lib": ProjectInfo {
+            name: "a-lib",
+            dependencies: [],
+            tasks: [
+                TaskInfo {
+                    project: ProjectRef(
+                        "a-lib",
+                    ),
+                    name: "build",
+                    commands: [
+                        "echo \"build-a-lib\"",
+                    ],
+                    dependencies: [],
+                    inputs: TaskInputs {
+                        paths: [],
+                        env_vars: [],
+                        commands: [],
+                    },
+                },
+                TaskInfo {
+                    project: ProjectRef(
+                        "a-lib",
+                    ),
+                    name: "hello",
+                    commands: [
+                        "echo \"hello\"",
+                    ],
+                    dependencies: [],
+                    inputs: TaskInputs {
+                        paths: [],
+                        env_vars: [],
+                        commands: [],
+                    },
+                },
+            ],
+            root: WorkspacePath {
+                absolute: "/Users/graeme/src/unknown/src/workspace/test-data/projects/a-lib",
+                relative: "projects/a-lib",
+            },
+        },
+        "a-service": ProjectInfo {
+            name: "a-service",
+            dependencies: [
+                ProjectRef(
+                    "a-lib",
+                ),
+            ],
+            tasks: [
+                TaskInfo {
+                    project: ProjectRef(
+                        "a-service",
+                    ),
+                    name: "build",
+                    commands: [
+                        "echo \"build-a-service\"",
+                    ],
+                    dependencies: [
+                        TaskDependency {
+                            task: NamedTask(
+                                "build",
+                            ),
+                            target_self: true,
+                            target_deps: true,
+                        },
+                    ],
+                    inputs: TaskInputs {
+                        paths: [],
+                        env_vars: [],
+                        commands: [],
+                    },
+                },
+                TaskInfo {
+                    project: ProjectRef(
+                        "a-service",
+                    ),
+                    name: "bye",
+                    commands: [
+                        "echo \"bye\"",
+                    ],
+                    dependencies: [],
+                    inputs: TaskInputs {
+                        paths: [],
+                        env_vars: [],
+                        commands: [],
+                    },
+                },
+            ],
+            root: WorkspacePath {
+                absolute: "/Users/graeme/src/unknown/src/workspace/test-data/projects/a-service",
+                relative: "projects/a-service",
+            },
+        },
+    },
+    ..
+}

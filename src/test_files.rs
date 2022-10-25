@@ -1,0 +1,44 @@
+use camino::Utf8PathBuf;
+use tempfile::TempDir;
+
+use crate::workspace::WorkspacePath;
+
+pub struct TestFiles {
+    dir: TempDir,
+}
+
+impl TestFiles {
+    pub fn new() -> Self {
+        TestFiles {
+            dir: TempDir::new().expect("to be able to create a temp dir"),
+        }
+    }
+
+    pub fn add_file<Name: ?Sized + AsRef<str>, Contents: ?Sized + AsRef<str>>(
+        &mut self,
+        name: &Name,
+        contents: &Contents,
+    ) {
+        let path = Utf8PathBuf::from(name);
+        assert!(path.is_relative());
+
+        let path = self.dir.path().join(path);
+        std::fs::create_dir_all(path.parent().expect("path to have a parent"))
+            .expect("to be able to create any dirs");
+
+        std::fs::write(path, contents.as_ref()).expect("to be able to write a file")
+    }
+
+    pub fn with_file<Name: ?Sized + AsRef<str>, Contents: ?Sized + AsRef<str>>(
+        mut self,
+        name: &Name,
+        contents: &Contents,
+    ) -> Self {
+        self.add_file(name, contents);
+        self
+    }
+
+    pub fn root(&self) -> WorkspacePath {
+        WorkspacePath::for_workspace(self.dir.path())
+    }
+}

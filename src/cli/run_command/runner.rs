@@ -193,10 +193,11 @@ fn should_task_run(
 
             let should_run = last_hash
                 .as_ref()
-                .map(|last_hash| *last_hash != new_hash)
+                .zip(new_hash)
+                .map(|(last_hash, new_hash)| *last_hash != new_hash)
                 .unwrap_or(true);
 
-            Ok((should_run, Some(new_hash)))
+            Ok((should_run, new_hash))
         }
     }
 }
