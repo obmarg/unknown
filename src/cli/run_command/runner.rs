@@ -127,11 +127,12 @@ async fn run_task(
     hash_registry: &HashRegistry,
     dependency_outcome: OutcomeSummary,
 ) -> Result<TaskOutcome, TaskError> {
+    tracing::info!(task = %task.task_ref(), "Starting task");
     let (should_run, input_hash) =
         block_in_place(|| should_task_run(task, workspace, since, hash_registry))?;
 
     if !should_run && dependency_outcome == OutcomeSummary::NoChange {
-        tracing::info!("Skipping task");
+        tracing::info!(task = %task.task_ref(), "Skipping task");
         return Ok(TaskOutcome::Skipped);
     }
 
@@ -142,6 +143,9 @@ async fn run_task(
         let command = args
             .next()
             .expect("there to be some content in a tasks command");
+        let args = args.collect::<Vec<_>>();
+
+        tracing::debug!(command=%command, args=?args, "Running command");
 
         let mut child = tokio::process::Command::new(command)
             .args(args)
@@ -153,16 +157,19 @@ async fn run_task(
             .spawn()
             .map_err(TaskError::CommandError)?;
 
-        child
+        let exit_status = child
             .wait_and_pipe_output(&mut output)
             .await
             .map_err(|_| TaskError::OutputError())?;
+
+        tracing::debug!(command=%command, exit_code=exit_status.code(), "Command finished");
     }
 
     if let Some(input_hash) = input_hash {
         hash_registry.update_input_hash(task.task_ref(), input_hash);
     }
 
+    tracing::info!(task = %task.task_ref(), "Finished task");
     Ok(TaskOutcome::Succesful)
 }
 

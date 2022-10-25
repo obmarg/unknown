@@ -182,7 +182,12 @@ struct TaskAndDeps {
     deps: HashSet<TaskRef>,
 }
 
-#[tracing::instrument(skip(workspace))]
+#[tracing::instrument(
+    fields(
+        target_projects = %target_projects.iter().map(|p| p.name.as_ref()).collect::<Vec<_>>().join(", ")
+    )
+    skip(workspace, target_projects))
+]
 fn find_tasks<'a>(
     workspace: &'a Workspace,
     target_projects: &HashSet<&'a ProjectInfo>,
@@ -194,6 +199,15 @@ fn find_tasks<'a>(
             if let Some(task) = project.lookup_task(task_name) {
                 tasks.insert(task.task_ref());
                 let task_deps = workspace.graph.walk_task_dependencies(task.task_ref());
+                tracing::debug!(
+                    "{} depends on {}",
+                    task.task_ref(),
+                    task_deps
+                        .iter()
+                        .map(|d| d.to_string())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                );
                 tasks.extend(task_deps);
             }
         }
