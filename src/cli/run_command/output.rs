@@ -6,7 +6,13 @@ use colored::{Color, Colorize};
 use crate::workspace::{TaskInfo, TaskRef};
 
 pub fn build_command_outputs(tasks: &[&TaskInfo]) -> HashMap<TaskRef, CommandOutput> {
-    let max_len = CommandOutput::max_task_len(tasks);
+    let max_project_len = tasks
+        .iter()
+        .map(|t| t.project.name().len())
+        .max()
+        .unwrap_or_default();
+    let max_task_len = tasks.iter().map(|t| t.name.len()).max().unwrap_or_default();
+
     let mut colors = [
         Color::Blue,
         Color::Red,
@@ -31,7 +37,8 @@ pub fn build_command_outputs(tasks: &[&TaskInfo]) -> HashMap<TaskRef, CommandOut
                 task.task_ref(),
                 CommandOutput::new(
                     task,
-                    max_len,
+                    max_project_len,
+                    max_task_len,
                     *colors
                         .next()
                         .expect("inifinite iterator to always return an item on next"),
@@ -47,29 +54,26 @@ pub struct CommandOutput {
 }
 
 impl CommandOutput {
-    fn new(task: &TaskInfo, max_task_len: usize, color: Color) -> CommandOutput {
-        let unaligned_annotation = CommandOutput::raw_task_annotation(task);
-
-        let annotation = format!("{:>width$} ", unaligned_annotation, width = max_task_len)
-            .color(color)
-            .to_string();
+    fn new(
+        task: &TaskInfo,
+        max_project_len: usize,
+        max_task_len: usize,
+        color: Color,
+    ) -> CommandOutput {
+        let annotation = format!(
+            "{:>project_width$} | {:<task_width$} ",
+            task.project.name(),
+            task.name,
+            project_width = max_project_len,
+            task_width = max_task_len
+        )
+        .color(color)
+        .to_string();
 
         CommandOutput {
             stdout: AnnotatedWrite::new(annotation.clone(), std::io::stdout()),
             stderr: AnnotatedWrite::new(annotation, std::io::stderr()),
         }
-    }
-
-    fn max_task_len(tasks: &[&TaskInfo]) -> usize {
-        tasks
-            .iter()
-            .map(|task| CommandOutput::raw_task_annotation(task).len())
-            .max()
-            .unwrap_or_default()
-    }
-
-    fn raw_task_annotation(task: &TaskInfo) -> String {
-        format!("{} | {}", task.project.name(), task.name)
     }
 
     // TODO: Make this async, also maybe make it return a result
