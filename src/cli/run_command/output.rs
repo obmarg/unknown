@@ -98,7 +98,7 @@ struct AnnotatedWrite<W> {
 }
 
 impl<W> AnnotatedWrite<W> {
-    fn new<'a>(annotation: impl Into<String>, inner: W) -> AnnotatedWrite<W> {
+    fn new(annotation: impl Into<String>, inner: W) -> AnnotatedWrite<W> {
         AnnotatedWrite {
             annotation: annotation.into(),
             inner,

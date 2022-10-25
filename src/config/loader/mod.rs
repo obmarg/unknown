@@ -54,8 +54,6 @@ pub fn load_config_from_path(
 
 #[derive(Debug, miette::Diagnostic, thiserror::Error)]
 pub enum ProjectImportError {
-    #[error("Couldn't load file {1}: {0}")]
-    IoError(std::io::Error, PathBuf),
     #[error("Couldn't parse project file {1}")]
     ParsingError(super::ParsingError, PathBuf),
     #[error("File not contained in workspace")]

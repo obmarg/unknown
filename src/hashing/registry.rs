@@ -33,7 +33,7 @@ impl HashRegistry {
                 let (project, task) = task_ref.split_once("::")?;
 
                 let task_ref = workspace
-                    .lookup_project(&project)?
+                    .lookup_project(project)?
                     .lookup_task(task)?
                     .task_ref();
 

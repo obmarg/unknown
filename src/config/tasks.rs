@@ -49,23 +49,4 @@ pub struct InputBlock {
 
     #[knuffel(children(name = "command"), unwrap(argument))]
     pub commands: Vec<String>,
-    // TODO: Stuff goes here..
-}
-
-#[derive(knuffel::Decode, Debug)]
-pub struct DirInput {
-    #[knuffel(argument)]
-    path: String,
-
-    #[knuffel(property)]
-    glob: Option<String>,
-}
-
-#[derive(knuffel::Decode, Debug)]
-pub struct Command {
-    #[knuffel(argument)]
-    path: String,
-
-    #[knuffel(property)]
-    glob: Option<String>,
 }

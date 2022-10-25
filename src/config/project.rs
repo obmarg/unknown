@@ -12,12 +12,6 @@ pub struct ProjectDefinition {
     pub tasks: tasks::TaskBlock,
 }
 
-#[derive(knuffel::Decode, Debug)]
-pub struct Project {
-    #[knuffel(argument)]
-    name: String,
-}
-
 #[derive(knuffel::Decode, Debug, Default)]
 pub struct DependencyBlock {
     #[knuffel(children(name = "project"), unwrap(argument))]
@@ -25,13 +19,12 @@ pub struct DependencyBlock {
 
     #[knuffel(children(name = "path"), unwrap(argument))]
     pub paths: Vec<String>,
-
-    #[knuffel(children(name = "import"))]
-    pub imports: Vec<DependencyImport>,
+    // #[knuffel(children(name = "import"))]
+    // pub imports: Vec<DependencyImport>,
 }
 
-#[derive(knuffel::Decode, Debug)]
-pub struct DependencyImport {
-    #[knuffel(argument)]
-    path: String,
-}
+// #[derive(knuffel::Decode, Debug)]
+// pub struct DependencyImport {
+//     #[knuffel(argument)]
+//     path: String,
+// }

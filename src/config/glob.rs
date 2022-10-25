@@ -1,10 +1,5 @@
 use knuffel::{
-    ast::Literal,
-    decode::Kind,
-    errors::{DecodeError, ExpectedKind},
-    span::Spanned,
-    traits::ErrorSpan,
-    DecodeScalar,
+    ast::Literal, decode::Kind, errors::DecodeError, span::Spanned, traits::ErrorSpan, DecodeScalar,
 };
 
 #[derive(Debug, Clone)]
@@ -21,15 +16,15 @@ where
     S: ErrorSpan,
 {
     fn type_check(
-        type_name: &Option<knuffel::span::Spanned<knuffel::ast::TypeName, S>>,
-        ctx: &mut knuffel::decode::Context<S>,
+        _type_name: &Option<knuffel::span::Spanned<knuffel::ast::TypeName, S>>,
+        _ctx: &mut knuffel::decode::Context<S>,
     ) {
         // Not bothering with types for now...
     }
 
     fn raw_decode(
         value: &Spanned<Literal, S>,
-        ctx: &mut knuffel::decode::Context<S>,
+        _ctx: &mut knuffel::decode::Context<S>,
     ) -> Result<Self, DecodeError<S>> {
         let Literal::String(s) = &**value else {
             let found =  match **value {

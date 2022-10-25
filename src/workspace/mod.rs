@@ -78,7 +78,7 @@ impl Workspace {
                         .iter()
                         .map(TaskDependency::from_config)
                         .collect(),
-                    inputs: TaskInputs::from_config(&task.input_blocks, &workspace_info.root_path),
+                    inputs: TaskInputs::from_config(&task.input_blocks),
                 })
             }
 
@@ -217,21 +217,11 @@ impl TaskDependency {
     }
 }
 
-#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, Hash, PartialEq, Eq)]
 pub struct TaskInputs {
     pub paths: Vec<Glob>,
     pub env_vars: Vec<String>,
     pub commands: Vec<String>,
-}
-
-impl Default for TaskInputs {
-    fn default() -> Self {
-        Self {
-            paths: vec![],
-            env_vars: Default::default(),
-            commands: Default::default(),
-        }
-    }
 }
 
 impl TaskInputs {
@@ -243,18 +233,15 @@ impl TaskInputs {
         self.paths.len() + self.env_vars.len() + self.commands.len()
     }
 
-    pub fn from_config(
-        inputs: &[config::InputBlock],
-        workspace_path: &WorkspacePath,
-    ) -> TaskInputs {
+    pub fn from_config(inputs: &[config::InputBlock]) -> TaskInputs {
         let mut this = TaskInputs::default();
         for input in inputs {
-            this.load_block(input, workspace_path)
+            this.load_block(input)
         }
         this
     }
 
-    fn load_block(&mut self, inputs: &config::InputBlock, workspace_path: &WorkspacePath) {
+    fn load_block(&mut self, inputs: &config::InputBlock) {
         for path in &inputs.paths {
             self.paths.push(path.clone().into_inner());
         }

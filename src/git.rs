@@ -87,7 +87,7 @@ where
             Mode::Feature(base_branch) => self
                 .execute(["git", "merge-base", base_branch.as_ref(), "HEAD"])
                 .map(|base| base.trim_end().to_string())
-                .map_err(|e| GitError::MergeBase(base_branch, e.to_string())),
+                .map_err(|e| GitError::MergeBase(base_branch, e)),
             Mode::Main(base_commit) => Ok(base_commit.trim_end().to_string()),
         }
     }

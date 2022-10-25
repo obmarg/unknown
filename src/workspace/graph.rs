@@ -16,7 +16,7 @@ pub struct WorkspaceGraph {
 }
 
 impl WorkspaceGraph {
-    pub(super) fn new(info: &WorkspaceInfo, project_map: &HashMap<String, ProjectInfo>) -> Self {
+    pub(super) fn new(_info: &WorkspaceInfo, project_map: &HashMap<String, ProjectInfo>) -> Self {
         let mut graph = Graph::new();
         let root_index = graph.add_node(WorkspaceNode::WorkspaceRoot);
 
@@ -143,6 +143,7 @@ impl WorkspaceGraph {
             .collect()
     }
 
+    #[allow(unused)]
     pub fn walk_project_dependencies(&self, project: ProjectRef) -> HashSet<ProjectRef> {
         let filtered_graph = EdgeFiltered::from_fn(&self.graph, |edge| {
             matches!(edge.weight(), WorkspaceEdge::ProjectDependsOn)
