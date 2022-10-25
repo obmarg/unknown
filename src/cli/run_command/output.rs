@@ -43,7 +43,7 @@ pub fn build_command_outputs(tasks: &[&TaskInfo]) -> HashMap<TaskRef, CommandOut
 
 pub struct CommandOutput {
     stdout: AnnotatedWrite<std::io::Stdout>,
-    stdin: AnnotatedWrite<std::io::Stdin>,
+    stderr: AnnotatedWrite<std::io::Stderr>,
 }
 
 impl CommandOutput {
@@ -56,7 +56,7 @@ impl CommandOutput {
 
         CommandOutput {
             stdout: AnnotatedWrite::new(annotation.clone(), std::io::stdout()),
-            stdin: AnnotatedWrite::new(annotation, std::io::stdin()),
+            stderr: AnnotatedWrite::new(annotation, std::io::stderr()),
         }
     }
 
@@ -80,9 +80,9 @@ impl CommandOutput {
     }
 
     pub fn stderr(&mut self, buf: &[u8]) {
-        self.stdout
+        self.stderr
             .write_all(buf)
-            .expect("Writing to stdout not to fail (TODO: remove this assumption)")
+            .expect("Writing to stderr not to fail (TODO: remove this assumption)")
     }
 }
 
