@@ -57,3 +57,14 @@ fn load_workspace() -> Result<Workspace, miette::Report> {
     // TODO: workspace::new should return an error probably
     Ok(Workspace::new(workspace_file, project_files))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn verify_cli() {
+        use clap::CommandFactory;
+        Cli::command().debug_assert()
+    }
+}

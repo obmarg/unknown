@@ -3,7 +3,7 @@ use std::str::FromStr;
 use camino::Utf8PathBuf;
 use chumsky::prelude::*;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct ProjectFilter {
     pub specs: Vec<FilterSpec>,
 }
@@ -20,14 +20,14 @@ impl ProjectFilter {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct FilterSpec {
     pub include_dependents: bool,
     pub include_dependencies: bool,
     pub matcher: Matcher,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum Matcher {
     Path(Utf8PathBuf),
     Name(String),

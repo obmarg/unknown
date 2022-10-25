@@ -13,6 +13,7 @@ pub struct TasksOpts {
     pub format: Format,
 }
 
+#[derive(Clone)]
 pub enum Format {
     Auto,
     Plain,

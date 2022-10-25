@@ -13,6 +13,7 @@ pub struct ProjectsOpts {
     pub format: Format,
 }
 
+#[derive(Clone)]
 pub enum Format {
     Auto,
     Plain,
