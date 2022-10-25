@@ -1,7 +1,7 @@
 ---
 source: src/config/tests.rs
-assertion_line: 27
-expression: "parse_workspace_file(&PathBuf::from(\"blah/workspace.kdl\"),\n        &str_data).map_err(|e| miette::Report::new(e.0))"
+assertion_line: 28
+expression: "parse_workspace_file(&Utf8PathBuf::from(\"blah/workspace.kdl\"),\n        &str_data).map_err(|e| miette::Report::new(e.0))"
 ---
 Ok(
     WorkspaceFile {
@@ -9,7 +9,22 @@ Ok(
         config: WorkspaceDefinition {
             name: "my-workspace",
             project_paths: [
-                "**",
+                Glob(
+                    Glob {
+                        glob: "**",
+                        re: "(?-u)^.*$",
+                        opts: GlobOptions {
+                            case_insensitive: false,
+                            literal_separator: false,
+                            backslash_escape: true,
+                        },
+                        tokens: Tokens(
+                            [
+                                RecursivePrefix,
+                            ],
+                        ),
+                    },
+                ),
             ],
         },
     },

@@ -1,4 +1,6 @@
-use std::path::{Path, PathBuf};
+use camino::{Utf8Path, Utf8PathBuf};
+use globset::{Glob, GlobSetBuilder};
+use ignore::WalkBuilder;
 
 use super::{
     parse_project_file, parse_task_file, parse_workspace_file, ProjectFile, WorkspaceFile,
@@ -8,10 +10,10 @@ use super::{
 mod tests;
 
 pub fn load_config_from_path(
-    current_path: PathBuf,
+    current_path: Utf8PathBuf,
 ) -> Result<(WorkspaceFile, Vec<ProjectFile>), miette::Report> {
     let current_path = current_path
-        .canonicalize()
+        .canonicalize_utf8()
         .expect("to be able to canonicalise current path");
 
     let workspace_path = find_workspace_file(current_path).ok_or(MissingWorkspaceFile)?;
@@ -21,19 +23,20 @@ pub fn load_config_from_path(
     )?;
 
     let workspace_root = workspace_path.parent().unwrap();
-
-    let project_config_paths = workspace_file
+    let project_paths = workspace_file
         .config
         .project_paths
         .iter()
-        .flat_map(|project_path| find_project_files(workspace_root, project_path))
+        .map(|g| g.clone().into_inner())
         .collect::<Vec<_>>();
+
+    let project_config_paths = find_project_files(workspace_root, &project_paths);
 
     let project_files = project_config_paths
         .iter()
         .map(|path| {
             let canonical_path = path
-                .canonicalize()
+                .canonicalize_utf8()
                 .expect("project path to be canonicalizable");
 
             let Ok(relative_path) = canonical_path.strip_prefix(workspace_root) else {
@@ -55,11 +58,11 @@ pub fn load_config_from_path(
 #[derive(Debug, miette::Diagnostic, thiserror::Error)]
 pub enum ProjectImportError {
     #[error("Couldn't parse project file {1}")]
-    ParsingError(super::ParsingError, PathBuf),
+    ParsingError(super::ParsingError, Utf8PathBuf),
     #[error("File not contained in workspace")]
     FileNotInWorkspace {
-        file_path: PathBuf,
-        workspace_root: PathBuf,
+        file_path: Utf8PathBuf,
+        workspace_root: Utf8PathBuf,
     },
     #[error("Error importing a task")]
     #[diagnostic()]
@@ -83,32 +86,44 @@ impl ProjectImportError {
 #[diagnostic(help("nabs requires a workspace.kdl in the current directory or a parent directory"))]
 struct MissingWorkspaceFile;
 
-fn find_project_files(root: &Path, project_path: &str) -> Vec<PathBuf> {
-    let root = root.as_os_str().to_str().unwrap();
-    let project_path = match project_path.starts_with('/') {
-        true => format!("{root}{project_path}"),
-        false => format!("{root}/{project_path}"),
-    };
-    let glob = match project_path.ends_with('/') {
-        true => format!("{project_path}project.kdl"),
-        false => format!("{project_path}/project.kdl"),
-    };
-    // TODO: At some point want to update this to use ignore.  not now though
+fn find_project_files(root: &Utf8Path, project_paths: &[Glob]) -> Vec<Utf8PathBuf> {
+    let mut glob_builder = GlobSetBuilder::new();
+    if project_paths.is_empty() {
+        glob_builder.add(Glob::new("**").unwrap());
+    }
+    for path in project_paths {
+        glob_builder.add(path.clone());
+    }
+    let glob_set = glob_builder.build().expect("to be able to build globset");
 
-    // TODO: probably also need to make sure none of these are canonically out of our workspace...
-    glob::glob(&glob)
-        .expect("Project path patterns broke innit")
-        .map(|r| r.expect("something wrong with the result"))
+    WalkBuilder::new(root)
+        .hidden(false)
+        .build()
+        .filter_map(|f| f.ok())
+        .filter(|entry| {
+            let file_path = entry.path();
+            if file_path.is_file()
+                && file_path
+                    .file_name()
+                    .map(|p| p == "project.kdl")
+                    .unwrap_or_default()
+            {
+                let relative_folder = file_path.parent().unwrap().strip_prefix(root).unwrap();
+                return glob_set.is_match(relative_folder);
+            }
+            false
+        })
+        .map(|d| Utf8Path::from_path(d.path()).unwrap().to_owned())
         .collect()
 }
 
-fn find_workspace_file(mut current_path: PathBuf) -> Option<PathBuf> {
+fn find_workspace_file(mut current_path: Utf8PathBuf) -> Option<Utf8PathBuf> {
     while current_path.parent().is_some() {
         current_path.push("workspace.kdl");
         if current_path.exists() {
             return Some(
                 current_path
-                    .canonicalize()
+                    .canonicalize_utf8()
                     .expect("to be able to canonicalize root path"),
             );
         }
@@ -124,19 +139,19 @@ fn find_workspace_file(mut current_path: PathBuf) -> Option<PathBuf> {
 #[diagnostic(help("There was a problem loading a referenced task."))]
 pub enum TaskImportError {
     #[error("Couldn't load {0}: {1}")]
-    IoError(PathBuf, std::io::Error),
+    IoError(Utf8PathBuf, std::io::Error),
     #[error("Couldn't parse task file")]
     ParsingError(super::ParsingError),
     #[error("File not contained in workspace")]
     FileNotInWorkspace {
-        file_path: PathBuf,
-        workspace_root: PathBuf,
+        file_path: Utf8PathBuf,
+        workspace_root: Utf8PathBuf,
     },
 }
 
 fn import_tasks(
     mut project_file: ProjectFile,
-    workspace_root: &Path,
+    workspace_root: &Utf8Path,
 ) -> Result<ProjectFile, TaskImportError> {
     let mut imports = project_file
         .config
@@ -159,7 +174,7 @@ fn import_tasks(
         // TODO: for safety, need to make sure this is still a subpath of workspace_root.
         // possibly also need to canonicalise it...?
         let path = path
-            .canonicalize()
+            .canonicalize_utf8()
             .map_err(|e| TaskImportError::IoError(relative_path.to_owned(), e))?;
 
         if !path.starts_with(workspace_root) {

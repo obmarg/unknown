@@ -1,7 +1,7 @@
 ---
 source: src/config/tests.rs
 assertion_line: 13
-expression: "parse_project_file(&PathBuf::from(\"blah/project.kdl\"),\n        &str_data).map_err(|e| miette::Report::new(e.0))"
+expression: "parse_project_file(&Utf8PathBuf::from(\"blah/project.kdl\"),\n        &dbg!(str_data)).map_err(|e| miette::Report::new(e.0))"
 ---
 Ok(
     ProjectFile {
@@ -14,14 +14,6 @@ Ok(
                 ],
                 paths: [
                     "lib/whatever",
-                ],
-                imports: [
-                    DependencyImport {
-                        path: "Cargo.lock",
-                    },
-                    DependencyImport {
-                        path: "package.json",
-                    },
                 ],
             },
             tasks: TaskBlock {

@@ -45,6 +45,8 @@ impl TaskRunner {
 
     #[tracing::instrument(skip(self))]
     pub fn start_task(&mut self, task_ref: TaskRef) {
+        tracing::debug!(task = %task_ref, "Starting task");
+
         let workspace = Arc::clone(&self.workspace);
         let since = self.since.clone();
         let hash_registry = Arc::clone(&self.hash_registry);
@@ -127,7 +129,7 @@ async fn run_task(
     hash_registry: &HashRegistry,
     dependency_outcome: OutcomeSummary,
 ) -> Result<TaskOutcome, TaskError> {
-    tracing::info!(task = %task.task_ref(), "Starting task");
+    tracing::info!(task = %task.task_ref(), "Checking if task should run");
     let (should_run, input_hash) =
         block_in_place(|| should_task_run(task, workspace, since, hash_registry))?;
 

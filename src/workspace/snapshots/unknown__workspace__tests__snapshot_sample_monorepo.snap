@@ -7,7 +7,20 @@ Workspace {
     info: WorkspaceInfo {
         name: "my-workspace",
         project_paths: [
-            "**",
+            Glob {
+                glob: "**",
+                re: "(?-u)^.*$",
+                opts: GlobOptions {
+                    case_insensitive: false,
+                    literal_separator: false,
+                    backslash_escape: true,
+                },
+                tokens: Tokens(
+                    [
+                        RecursivePrefix,
+                    ],
+                ),
+            },
         ],
         root_path: WorkspacePath {
             absolute: "/Users/graeme/src/unknown/src/workspace/test-data",

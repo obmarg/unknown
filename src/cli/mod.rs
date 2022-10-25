@@ -1,3 +1,4 @@
+use camino::Utf8PathBuf;
 use clap::Parser;
 
 use crate::{config::load_config_from_path, workspace::Workspace};
@@ -47,7 +48,10 @@ pub fn run() -> miette::Result<()> {
 
 fn load_workspace() -> Result<Workspace, miette::Report> {
     let (workspace_file, project_files) = load_config_from_path(
-        std::env::current_dir().expect("couldn't determine current directory"),
+        Utf8PathBuf::try_from(
+            std::env::current_dir().expect("couldn't determine current directory"),
+        )
+        .expect("the current directory to be a utf8 path"),
     )?;
 
     // TODO: workspace::new should return an error probably

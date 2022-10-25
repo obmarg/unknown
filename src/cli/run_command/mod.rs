@@ -3,6 +3,8 @@ use std::{
     sync::Arc,
 };
 
+use camino::{Utf8Path, Utf8PathBuf};
+use globset::GlobSet;
 use tokio::runtime::Runtime;
 
 use crate::{
@@ -40,7 +42,11 @@ pub struct RunOpts {
 pub fn run(workspace: Workspace, opts: RunOpts) -> miette::Result<()> {
     let workspace = Arc::new(workspace);
 
-    let target_projects = filter_projects(&workspace, opts.filter);
+    let target_projects = filter_projects(
+        &workspace,
+        opts.filter
+            .or_else(|| infer_filter(workspace.root_path(), &workspace.projects_globset())),
+    );
     let tasks = find_tasks(&workspace, &target_projects, opts.tasks);
 
     tracing::debug!(tasks = ?tasks, "Running tasks");
@@ -139,6 +145,24 @@ pub fn run(workspace: Workspace, opts: RunOpts) -> miette::Result<()> {
     Ok(())
 }
 
+// Infers the run filter based on the current directory (if any)
+fn infer_filter(workspace_root: &Utf8Path, globset: &GlobSet) -> Option<ProjectFilter> {
+    let current_path =
+        Utf8PathBuf::try_from(std::env::current_dir().expect("to have a current directory"))
+            .expect("current_dir to be utf8");
+
+    while current_path.starts_with(workspace_root) {
+        if current_path.join("project.kdl").exists() {
+            let relative_path = current_path.strip_prefix(workspace_root).unwrap();
+            if globset.is_match(relative_path) {
+                return Some(ProjectFilter::path(relative_path.to_path_buf()));
+            }
+        }
+    }
+
+    None
+}
+
 #[tracing::instrument(skip(workspace))]
 fn filter_projects(workspace: &Workspace, filter: Option<ProjectFilter>) -> HashSet<&ProjectInfo> {
     let specs = filter.map(|pf| pf.specs).unwrap_or_default();
@@ -154,9 +178,8 @@ fn filter_projects(workspace: &Workspace, filter: Option<ProjectFilter>) -> Hash
         // First determine which projects match this spec.
         for project in workspace.projects() {
             let matches = match &spec.matcher {
-                super::filters::Matcher::Path(_) => todo!(),
+                super::filters::Matcher::Path(path) => project.root.relative() == path,
                 super::filters::Matcher::Name(name) => project.name == *name,
-                super::filters::Matcher::Exclude(_) => todo!(),
             };
             if matches {
                 current_selection.insert(project);

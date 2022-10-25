@@ -4,7 +4,7 @@ mod project;
 mod tasks;
 mod workspace;
 
-use std::path::{Path, PathBuf};
+use camino::{Utf8Path, Utf8PathBuf};
 
 pub use self::{
     glob::Glob,
@@ -19,7 +19,7 @@ mod tests;
 
 #[derive(Debug, thiserror::Error)]
 #[error("Error parsing {1}")]
-pub struct ParsingError(knuffel::Error, std::path::PathBuf);
+pub struct ParsingError(knuffel::Error, Utf8PathBuf);
 
 impl miette::Diagnostic for ParsingError {
     fn code<'a>(&'a self) -> Option<Box<dyn std::fmt::Display + 'a>> {
@@ -57,16 +57,14 @@ impl miette::Diagnostic for ParsingError {
 
 #[derive(Debug)]
 pub struct ProjectFile {
-    pub project_root: PathBuf,
+    pub project_root: Utf8PathBuf,
     pub config: ProjectDefinition,
 }
 
-pub fn parse_project_file(path: &Path, contents: &str) -> Result<ProjectFile, ParsingError> {
+pub fn parse_project_file(path: &Utf8Path, contents: &str) -> Result<ProjectFile, ParsingError> {
     let config = knuffel::parse::<ProjectDefinition>(
         path.file_name()
-            .expect("project file path to have a filename")
-            .to_string_lossy()
-            .as_ref(),
+            .expect("project file path to have a filename"),
         contents,
     )
     .map_err(|e| ParsingError(e, path.to_owned()))?;
@@ -85,20 +83,21 @@ pub fn parse_project_file(path: &Path, contents: &str) -> Result<ProjectFile, Pa
 
 #[derive(Debug)]
 pub struct WorkspaceFile {
-    pub workspace_root: PathBuf,
+    pub workspace_root: Utf8PathBuf,
     pub config: WorkspaceDefinition,
 }
 
-pub fn parse_workspace_file(path: &Path, contents: &str) -> Result<WorkspaceFile, ParsingError> {
+pub fn parse_workspace_file(
+    path: &Utf8Path,
+    contents: &str,
+) -> Result<WorkspaceFile, ParsingError> {
     let config = knuffel::parse(
         path.file_name()
-            .expect("workspace file path to have a filename")
-            .to_string_lossy()
-            .as_ref(),
+            .expect("workspace file path to have a filename"),
         contents,
     )
     .map_err(|e| {
-        let filename = std::path::PathBuf::from(path.file_name().unwrap());
+        let filename = Utf8PathBuf::from(path.file_name().unwrap());
         ParsingError(e, filename)
     })?;
 
@@ -116,12 +115,10 @@ pub struct TaskFile {
     pub config: tasks::TaskBlock,
 }
 
-pub fn parse_task_file(path: &Path, contents: &str) -> Result<TaskFile, ParsingError> {
+pub fn parse_task_file(path: &Utf8Path, contents: &str) -> Result<TaskFile, ParsingError> {
     let config = knuffel::parse(
         path.file_name()
-            .expect("workspace file path to have a filename")
-            .to_string_lossy()
-            .as_ref(),
+            .expect("workspace file path to have a filename"),
         contents,
     )
     .map_err(|e| ParsingError(e, path.to_owned()))?;

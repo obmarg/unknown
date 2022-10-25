@@ -38,6 +38,10 @@ impl WorkspacePath {
 
         WorkspacePath { absolute, relative }
     }
+
+    pub fn relative(&self) -> &Utf8Path {
+        &self.relative
+    }
 }
 
 impl std::hash::Hash for WorkspacePath {

@@ -1,10 +1,23 @@
 use std::str::FromStr;
 
-use chumsky::{prelude::*};
+use camino::Utf8PathBuf;
+use chumsky::prelude::*;
 
 #[derive(Debug)]
 pub struct ProjectFilter {
     pub specs: Vec<FilterSpec>,
+}
+
+impl ProjectFilter {
+    pub fn path(p: Utf8PathBuf) -> Self {
+        ProjectFilter {
+            specs: vec![FilterSpec {
+                matcher: Matcher::Path(p),
+                include_dependencies: false,
+                include_dependents: false,
+            }],
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -16,9 +29,8 @@ pub struct FilterSpec {
 
 #[derive(Debug)]
 pub enum Matcher {
-    Path(String),
+    Path(Utf8PathBuf),
     Name(String),
-    Exclude(String),
 }
 
 impl std::fmt::Display for ProjectFilter {
@@ -43,7 +55,6 @@ impl std::fmt::Display for FilterSpec {
         match &self.matcher {
             Matcher::Path(_) => todo!(),
             Matcher::Name(n) => write!(f, "{n}")?,
-            Matcher::Exclude(_) => todo!(),
         }
         if self.include_dependencies {
             write!(f, "...")?;

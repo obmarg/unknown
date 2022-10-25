@@ -22,17 +22,25 @@ pub struct Workspace {
 
 impl std::fmt::Debug for Workspace {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Convert project_map to a BTreeMap before printing so
+        // we can get a consistent order for snapshot testing
+        let project_map = self
+            .project_map
+            .iter()
+            .collect::<std::collections::BTreeMap<_, _>>();
+
         f.debug_struct("Workspace")
             .field("info", &self.info)
-            .field("project_map", &self.project_map)
+            .field("project_map", &project_map)
             .finish_non_exhaustive()
     }
 }
 
 #[derive(Debug)]
 struct WorkspaceInfo {
+    #[allow(unused)]
     name: String,
-    project_paths: Vec<String>,
+    project_paths: Vec<Glob>,
     root_path: WorkspacePath,
 }
 
@@ -43,7 +51,12 @@ impl Workspace {
     ) -> Self {
         let workspace_info = WorkspaceInfo {
             name: workspace_file.config.name,
-            project_paths: workspace_file.config.project_paths,
+            project_paths: workspace_file
+                .config
+                .project_paths
+                .into_iter()
+                .map(|g| g.into_inner())
+                .collect(),
             root_path: WorkspacePath::for_workspace(&workspace_file.workspace_root),
         };
 
@@ -110,6 +123,17 @@ impl Workspace {
 
     pub fn root_path(&self) -> &Utf8Path {
         self.info.root_path.as_ref()
+    }
+
+    pub fn projects_globset(&self) -> globset::GlobSet {
+        let mut builder = globset::GlobSetBuilder::new();
+        for glob in &self.info.project_paths {
+            builder.add(glob.clone());
+        }
+        if self.info.project_paths.is_empty() {
+            builder.add(globset::Glob::new("**").unwrap());
+        }
+        builder.build().unwrap()
     }
 }
 

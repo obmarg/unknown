@@ -5,8 +5,10 @@ dependencies {
     project "other_project"
     path "lib/whatever"
 
-    import "Cargo.lock"
-    import "package.json"
+    // maybe want to be able to import deps from lang specific files?
+    // not going to implement that yet though
+    //import "Cargo.lock"
+    //import "package.json"
 }
 
 // Given how nested this block has ended up looking,
