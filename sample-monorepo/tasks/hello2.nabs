@@ -1,0 +1,3 @@
+task "hello2" {
+    command r#"echo "hello""#
+}

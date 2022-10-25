@@ -1,10 +1,7 @@
 use std::path::{Path, PathBuf};
 
-
-
 use super::{
-    parse_project_file, parse_task_file, parse_workspace_file, ProjectFile,
-    WorkspaceFile,
+    parse_project_file, parse_task_file, parse_workspace_file, ProjectFile, WorkspaceFile,
 };
 
 #[cfg(test)]
@@ -143,11 +140,18 @@ fn import_tasks(
     mut project_file: ProjectFile,
     workspace_root: &Path,
 ) -> Result<ProjectFile, TaskImportError> {
-    let mut imports = std::mem::take(&mut project_file.config.tasks.imports);
-    while let Some(import) = imports.pop() {
+    let mut imports = project_file
+        .config
+        .tasks
+        .imports
+        .drain(0..)
+        .map(|path| (path, project_file.project_root.clone()))
+        .collect::<Vec<_>>();
+
+    while let Some((import, relative_to)) = imports.pop() {
         let path = match import.strip_prefix('/') {
             Some(relative_path) => workspace_root.join(relative_path),
-            None => workspace_root.join(project_file.project_root.join(import)),
+            None => workspace_root.join(relative_to.join(import)),
         };
 
         let Ok(relative_path) = path.strip_prefix(workspace_root) else {
@@ -174,7 +178,12 @@ fn import_tasks(
         )
         .map_err(TaskImportError::ParsingError)?;
 
-        imports.extend(parsed.config.imports);
+        imports.extend(parsed.config.imports.into_iter().map(|import| {
+            (
+                import,
+                path.parent().expect("path to have a parent").to_owned(),
+            )
+        }));
 
         project_file.config.tasks.tasks.extend(parsed.config.tasks);
     }

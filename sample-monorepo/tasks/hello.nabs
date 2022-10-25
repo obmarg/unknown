@@ -1,3 +1,5 @@
+import "hello2.nabs"
+
 task "hello" {
     command r#"echo "hello""#
 }
