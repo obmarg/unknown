@@ -112,6 +112,11 @@ impl WorkspaceGraph {
                                     *target_index,
                                     WorkspaceEdge::TaskDependsOn,
                                 );
+                                self.graph.add_edge(
+                                    *target_index,
+                                    current_task_index,
+                                    WorkspaceEdge::TaskDependedOnBy,
+                                );
                             }
                         }
                     }
