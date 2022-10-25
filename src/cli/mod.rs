@@ -4,6 +4,7 @@ use crate::{config::load_config_from_path, workspace::Workspace};
 
 mod changed_command;
 mod filters;
+mod graph_command;
 mod projects_command;
 mod run_command;
 mod tasks_command;
@@ -25,6 +26,8 @@ pub enum Command {
     Projects(projects_command::ProjectsOpts),
     /// Prints information about tasks in the workspace (WIP)
     Tasks(tasks_command::TasksOpts),
+    /// Prints a graph of the workspace in dot format
+    Graph(graph_command::GraphOpts),
 }
 
 pub fn run() -> miette::Result<()> {
@@ -38,6 +41,7 @@ pub fn run() -> miette::Result<()> {
         Command::Run(command_opts) => run_command::run(workspace, command_opts),
         Command::Projects(command_opts) => projects_command::run(workspace, command_opts),
         Command::Tasks(command_opts) => tasks_command::run(workspace, command_opts),
+        Command::Graph(command_opts) => graph_command::run(workspace, command_opts),
     }
 }
 

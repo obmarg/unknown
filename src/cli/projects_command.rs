@@ -1,11 +1,6 @@
-use std::collections::HashSet;
-
 use tabled::{Table, Tabled};
 
-use crate::{
-    git,
-    workspace::{Workspace, WorkspacePath},
-};
+use crate::workspace::{Workspace, WorkspacePath};
 
 #[derive(clap::Parser)]
 pub struct ProjectsOpts {
