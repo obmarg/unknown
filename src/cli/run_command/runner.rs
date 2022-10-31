@@ -151,7 +151,7 @@ async fn run_task(
 
         let mut child = tokio::process::Command::new(command)
             .args(args)
-            .current_dir(&task.project.lookup(workspace).root)
+            .current_dir(&task.project.lookup(workspace).root.full_path())
             .stderr(Stdio::piped())
             .stdout(Stdio::piped())
             .stdin(Stdio::null())
@@ -196,7 +196,7 @@ fn should_task_run(
     match since {
         Some(since) => {
             let project_root = project.root.clone();
-            let should_run = git::have_files_changed(since, project_root.into())?;
+            let should_run = git::have_files_changed(since, project_root.full_path())?;
 
             Ok((should_run, None))
         }

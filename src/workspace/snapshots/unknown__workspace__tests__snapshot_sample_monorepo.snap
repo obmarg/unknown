@@ -1,6 +1,5 @@
 ---
 source: src/workspace/tests.rs
-assertion_line: 11
 expression: "Workspace::new(workspace, projects)"
 ---
 Workspace {
@@ -22,20 +21,32 @@ Workspace {
                 ),
             },
         ],
-        root_path: WorkspacePath {
-            absolute: "/Users/graeme/src/unknown/src/workspace/test-data",
-            relative: "",
-        },
+        root_path: WorkspaceRoot(
+            "/Users/graeme/src/unknown/src/workspace/test-data",
+        ),
     },
     project_map: {
-        "a-lib": ProjectInfo {
+        ProjectRef(
+            NormalisedPath {
+                workspace_root: WorkspaceRoot(
+                    "/Users/graeme/src/unknown/src/workspace/test-data",
+                ),
+                subpath: "projects/a-lib",
+            },
+        ): ProjectInfo {
             name: "a-lib",
             dependencies: [],
             tasks: [
                 TaskInfo {
                     project: ProjectRef(
-                        "a-lib",
+                        NormalisedPath {
+                            workspace_root: WorkspaceRoot(
+                                "/Users/graeme/src/unknown/src/workspace/test-data",
+                            ),
+                            subpath: "projects/a-lib",
+                        },
                     ),
+                    project_name: "a-lib",
                     name: "build",
                     commands: [
                         "echo \"build-a-lib\"",
@@ -49,8 +60,14 @@ Workspace {
                 },
                 TaskInfo {
                     project: ProjectRef(
-                        "a-lib",
+                        NormalisedPath {
+                            workspace_root: WorkspaceRoot(
+                                "/Users/graeme/src/unknown/src/workspace/test-data",
+                            ),
+                            subpath: "projects/a-lib",
+                        },
                     ),
+                    project_name: "a-lib",
                     name: "hello",
                     commands: [
                         "echo \"hello\"",
@@ -63,23 +80,43 @@ Workspace {
                     },
                 },
             ],
-            root: WorkspacePath {
-                absolute: "/Users/graeme/src/unknown/src/workspace/test-data/projects/a-lib",
-                relative: "projects/a-lib",
+            root: NormalisedPath {
+                workspace_root: WorkspaceRoot(
+                    "/Users/graeme/src/unknown/src/workspace/test-data",
+                ),
+                subpath: "projects/a-lib",
             },
         },
-        "a-service": ProjectInfo {
+        ProjectRef(
+            NormalisedPath {
+                workspace_root: WorkspaceRoot(
+                    "/Users/graeme/src/unknown/src/workspace/test-data",
+                ),
+                subpath: "projects/a-service",
+            },
+        ): ProjectInfo {
             name: "a-service",
             dependencies: [
                 ProjectRef(
-                    "a-lib",
+                    NormalisedPath {
+                        workspace_root: WorkspaceRoot(
+                            "/Users/graeme/src/unknown/src/workspace/test-data",
+                        ),
+                        subpath: "projects/a-lib",
+                    },
                 ),
             ],
             tasks: [
                 TaskInfo {
                     project: ProjectRef(
-                        "a-service",
+                        NormalisedPath {
+                            workspace_root: WorkspaceRoot(
+                                "/Users/graeme/src/unknown/src/workspace/test-data",
+                            ),
+                            subpath: "projects/a-service",
+                        },
                     ),
+                    project_name: "a-service",
                     name: "build",
                     commands: [
                         "echo \"build-a-service\"",
@@ -101,8 +138,14 @@ Workspace {
                 },
                 TaskInfo {
                     project: ProjectRef(
-                        "a-service",
+                        NormalisedPath {
+                            workspace_root: WorkspaceRoot(
+                                "/Users/graeme/src/unknown/src/workspace/test-data",
+                            ),
+                            subpath: "projects/a-service",
+                        },
                     ),
+                    project_name: "a-service",
                     name: "bye",
                     commands: [
                         "echo \"bye\"",
@@ -115,9 +158,11 @@ Workspace {
                     },
                 },
             ],
-            root: WorkspacePath {
-                absolute: "/Users/graeme/src/unknown/src/workspace/test-data/projects/a-service",
-                relative: "projects/a-service",
+            root: NormalisedPath {
+                workspace_root: WorkspaceRoot(
+                    "/Users/graeme/src/unknown/src/workspace/test-data",
+                ),
+                subpath: "projects/a-service",
             },
         },
     },

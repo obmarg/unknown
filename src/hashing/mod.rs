@@ -11,7 +11,10 @@ use rayon::prelude::*;
 
 pub use registry::{HashRegistry, HashRegistryLoadError};
 
-use crate::workspace::{ProjectInfo, TaskInfo, WorkspacePath};
+use crate::{
+    config::NormalisedPath,
+    workspace::{ProjectInfo, TaskInfo},
+};
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Copy, Default)]
 pub struct TaskHashes {
@@ -38,6 +41,7 @@ pub fn hash_task_inputs(project: &ProjectInfo, task: &TaskInfo) -> Result<Option
     hash_file_inputs(&project.root, &task.inputs.paths, &mut hashes)?;
     hash_env_vars(project, task, &mut hashes)?;
     hash_commands(project, task, &mut hashes)?;
+    // TODO: also need to hash the task/project itself somehow...
 
     let mut hasher = blake3::Hasher::new();
     for hash in hashes {
@@ -49,7 +53,7 @@ pub fn hash_task_inputs(project: &ProjectInfo, task: &TaskInfo) -> Result<Option
 }
 
 fn hash_file_inputs(
-    project_root: &WorkspacePath,
+    project_root: &NormalisedPath,
     globs: &[Glob],
     hashes: &mut Vec<blake3::Hash>,
 ) -> Result<(), HashError> {
@@ -68,7 +72,7 @@ fn hash_file_inputs(
 
     // TODO: Check if files is always sorted.
     // If it's not we'll need to sort it so we get consistent hashes.
-    let files = ignore::WalkBuilder::new(project_root)
+    let files = ignore::WalkBuilder::new(project_root.full_path())
         .hidden(false)
         .build()
         .filter_map(|f| f.ok())

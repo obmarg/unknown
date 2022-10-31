@@ -16,14 +16,14 @@ fn test_task_ref_direct_dependencies() {
     let workspace = a_workspace();
 
     let build_lib_ref = workspace
-        .lookup_project("a-lib")
+        .project_at_path("projects/a-lib")
         .unwrap()
         .lookup_task("build")
         .unwrap()
         .task_ref();
 
     let build_project_ref = workspace
-        .lookup_project("a-service")
+        .project_at_path("projects/a-service")
         .unwrap()
         .lookup_task("build")
         .unwrap()

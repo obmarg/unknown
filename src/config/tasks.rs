@@ -1,12 +1,29 @@
-use super::Glob;
+use super::{
+    paths::{ConfigPath, ConfigPathValidationError, NormalisedPath},
+    Glob,
+};
 
 #[derive(knuffel::Decode, Debug, Default)]
 pub struct TaskBlock {
     #[knuffel(children(name = "import"), unwrap(argument))]
-    pub(super) imports: Vec<String>,
+    pub(super) imports: Vec<ConfigPath>,
 
+    // #[knuffel(children(name = "import_template"), unwrap(argument))]
+    // template_imports: Vec<String>,
     #[knuffel(children(name = "task"))]
     pub tasks: Vec<TaskDefinition>,
+}
+
+impl TaskBlock {
+    pub(super) fn validate_and_normalise(
+        &mut self,
+        relative_to: &NormalisedPath,
+    ) -> Result<(), ConfigPathValidationError> {
+        for path in &mut self.imports {
+            path.normalise_relative_to(relative_to)?;
+        }
+        Ok(())
+    }
 }
 
 #[derive(knuffel::Decode, Debug)]

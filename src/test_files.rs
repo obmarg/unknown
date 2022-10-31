@@ -1,7 +1,7 @@
-use camino::Utf8PathBuf;
+use camino::{Utf8Path, Utf8PathBuf};
 use tempfile::TempDir;
 
-use crate::workspace::WorkspacePath;
+use crate::config::WorkspaceRoot;
 
 pub struct TestFiles {
     dir: TempDir,
@@ -38,7 +38,7 @@ impl TestFiles {
         self
     }
 
-    pub fn root(&self) -> WorkspacePath {
-        WorkspacePath::for_workspace(self.dir.path())
+    pub fn root(&self) -> WorkspaceRoot {
+        WorkspaceRoot::new(Utf8Path::from_path(self.dir.path()).unwrap().to_owned())
     }
 }

@@ -1,6 +1,6 @@
 use tabled::{Table, Tabled};
 
-use crate::workspace::{Workspace, WorkspacePath};
+use crate::{config::NormalisedPath, workspace::Workspace};
 
 #[derive(clap::Parser)]
 pub struct ProjectsOpts {
@@ -54,7 +54,7 @@ pub fn run(workspace: Workspace, opts: ProjectsOpts) -> miette::Result<()> {
 #[derive(serde::Serialize, Tabled)]
 pub struct Output {
     name: String,
-    path: WorkspacePath,
+    path: NormalisedPath,
 }
 
 #[derive(Clone, Copy, Debug)]

@@ -3,7 +3,9 @@ use globset::{Glob, GlobSetBuilder};
 use ignore::WalkBuilder;
 
 use super::{
-    parse_project_file, parse_task_file, parse_workspace_file, ProjectFile, WorkspaceFile,
+    parsing::{parse_project_file, parse_task_file, parse_workspace_file, ParsingError},
+    paths::{NormalisedPath, PathError, WorkspaceRoot},
+    ProjectFile, WorkspaceFile,
 };
 
 #[cfg(test)]
@@ -17,12 +19,16 @@ pub fn load_config_from_path(
         .expect("to be able to canonicalise current path");
 
     let workspace_path = find_workspace_file(current_path).ok_or(MissingWorkspaceFile)?;
-    let workspace_file = parse_workspace_file(
-        &workspace_path,
+    let config = parse_workspace_file(
+        workspace_path.as_ref(),
         &std::fs::read_to_string(&workspace_path).expect("couldn't read workspace file"),
     )?;
+    let workspace_root = WorkspaceRoot::new(workspace_path.parent().unwrap());
+    let workspace_file = WorkspaceFile {
+        workspace_root: workspace_root.clone(),
+        config,
+    };
 
-    let workspace_root = workspace_path.parent().unwrap();
     let project_paths = workspace_file
         .config
         .project_paths
@@ -30,55 +36,39 @@ pub fn load_config_from_path(
         .map(|g| g.clone().into_inner())
         .collect::<Vec<_>>();
 
-    let project_config_paths = find_project_files(workspace_root, &project_paths);
+    let project_file_paths = find_project_files(&workspace_root, &project_paths);
 
-    let project_files = project_config_paths
+    let project_files = project_file_paths
         .iter()
-        .map(|path| {
-            let canonical_path = path
-                .canonicalize_utf8()
-                .expect("project path to be canonicalizable");
+        .map(|project_file_path| -> Result<_, miette::Report> {
+            let config_text = std::fs::read_to_string(&project_file_path.full_path())
+                .expect("couldn't read project file");
+            let mut config = parse_project_file(project_file_path.as_subpath(), &config_text)
+                .map_err(miette::Report::new)?;
 
-            let Ok(relative_path) = canonical_path.strip_prefix(workspace_root) else {
-                return Err(ProjectImportError::FileNotInWorkspace { file_path: canonical_path, workspace_root: workspace_root.to_owned() })
+            let project_root = project_file_path
+                .parent()
+                .expect("a file path to always have a parent");
+
+            config
+                .validate_and_normalise(&workspace_root, &project_root)
+                .map_err(|e| {
+                    miette::Report::new(e).with_source_code(miette::NamedSource::new(
+                        project_file_path.as_subpath(),
+                        config_text,
+                    ))
+                })?;
+
+            let project_file = ProjectFile {
+                project_root,
+                config,
             };
 
-            let project_file = parse_project_file(
-                relative_path,
-                &std::fs::read_to_string(&canonical_path).expect("couldn't read project file"),
-            ).map_err(|e| ProjectImportError::ParsingError(e, relative_path.to_owned()))?;
-
-            Ok(import_tasks(project_file, workspace_root)?)
+            import_tasks(project_file).map_err(miette::Report::new)
         })
-        .collect::<Result<Vec<_>, _>>().map_err(ProjectImportError::into_report)?;
+        .collect::<Result<Vec<_>, _>>()?;
 
     Ok((workspace_file, project_files))
-}
-
-#[derive(Debug, miette::Diagnostic, thiserror::Error)]
-pub enum ProjectImportError {
-    #[error("Couldn't parse project file {1}")]
-    ParsingError(super::ParsingError, Utf8PathBuf),
-    #[error("File not contained in workspace")]
-    FileNotInWorkspace {
-        file_path: Utf8PathBuf,
-        workspace_root: Utf8PathBuf,
-    },
-    #[error("Error importing a task")]
-    #[diagnostic()]
-    ErrorImportingTasks(#[from] TaskImportError),
-}
-
-impl ProjectImportError {
-    pub fn into_report(self) -> miette::Report {
-        match self {
-            ProjectImportError::ParsingError(inner, _) => miette::Report::new(inner),
-            ProjectImportError::ErrorImportingTasks(TaskImportError::ParsingError(inner)) => {
-                miette::Report::new(inner)
-            }
-            other => miette::Report::new(other),
-        }
-    }
 }
 
 #[derive(Debug, miette::Diagnostic, thiserror::Error)]
@@ -86,7 +76,7 @@ impl ProjectImportError {
 #[diagnostic(help("nabs requires a workspace.kdl in the current directory or a parent directory"))]
 struct MissingWorkspaceFile;
 
-fn find_project_files(root: &Utf8Path, project_paths: &[Glob]) -> Vec<Utf8PathBuf> {
+fn find_project_files(root: &WorkspaceRoot, project_paths: &[Glob]) -> Vec<NormalisedPath> {
     let mut glob_builder = GlobSetBuilder::new();
     if project_paths.is_empty() {
         glob_builder.add(Glob::new("**").unwrap());
@@ -113,7 +103,10 @@ fn find_project_files(root: &Utf8Path, project_paths: &[Glob]) -> Vec<Utf8PathBu
             }
             false
         })
-        .map(|d| Utf8Path::from_path(d.path()).unwrap().to_owned())
+        .map(|d| {
+            root.normalise_subpath(Utf8Path::from_path(d.path()).expect("a utf8 path"))
+                .expect("to be able to normalise a path found via WalkBuilder")
+        })
         .collect()
 }
 
@@ -142,63 +135,35 @@ pub enum TaskImportError {
     IoError(Utf8PathBuf, std::io::Error),
     #[error("Couldn't parse task file")]
     ParsingError(super::ParsingError),
-    #[error("File not contained in workspace")]
-    FileNotInWorkspace {
-        file_path: Utf8PathBuf,
-        workspace_root: Utf8PathBuf,
-    },
 }
 
-fn import_tasks(
-    mut project_file: ProjectFile,
-    workspace_root: &Utf8Path,
-) -> Result<ProjectFile, TaskImportError> {
-    let mut imports = project_file
-        .config
-        .tasks
-        .imports
-        .drain(0..)
-        .map(|path| (path, project_file.project_root.clone()))
-        .collect::<Vec<_>>();
+fn import_tasks(mut project_file: ProjectFile) -> Result<ProjectFile, TaskImportError> {
+    let mut imports = std::mem::take(&mut project_file.config.tasks.imports);
 
-    while let Some((import, relative_to)) = imports.pop() {
-        let path = match import.strip_prefix('/') {
-            Some(relative_path) => workspace_root.join(relative_path),
-            None => workspace_root.join(relative_to.join(import)),
-        };
+    while let Some(import) = imports.pop() {
+        let task_path = import
+            .into_normalised()
+            .expect("paths to be normalised before calling import_task");
 
-        let Ok(relative_path) = path.strip_prefix(workspace_root) else {
-            return Err(TaskImportError::FileNotInWorkspace { file_path: path, workspace_root: workspace_root.to_owned() });
-        };
-
-        // TODO: for safety, need to make sure this is still a subpath of workspace_root.
-        // possibly also need to canonicalise it...?
-        let path = path
-            .canonicalize_utf8()
-            .map_err(|e| TaskImportError::IoError(relative_path.to_owned(), e))?;
-
-        if !path.starts_with(workspace_root) {
-            return Err(TaskImportError::FileNotInWorkspace {
-                file_path: path,
-                workspace_root: workspace_root.to_owned(),
-            });
-        }
-
-        let parsed = parse_task_file(
-            &path,
-            &std::fs::read_to_string(&path)
-                .map_err(|e| TaskImportError::IoError(relative_path.to_owned(), e))?,
+        let mut config = parse_task_file(
+            task_path.as_subpath(),
+            &std::fs::read_to_string(task_path.full_path())
+                .map_err(|e| TaskImportError::IoError(task_path.as_subpath().to_owned(), e))?,
         )
         .map_err(TaskImportError::ParsingError)?;
 
-        imports.extend(parsed.config.imports.into_iter().map(|import| {
-            (
-                import,
-                path.parent().expect("path to have a parent").to_owned(),
-            )
-        }));
+        config
+            .validate_and_normalise(&task_path.parent().unwrap())
+            .map_err(|e| {
+                // Actually not sure how to handle this...
+                // Ideally want nice miette errors highlighting the line, but that's
+                // going to be a tiny bit of work...
+                todo!("error handling")
+            })?;
 
-        project_file.config.tasks.tasks.extend(parsed.config.tasks);
+        imports.extend(config.imports.into_iter());
+
+        project_file.config.tasks.tasks.extend(config.tasks);
     }
 
     Ok(project_file)

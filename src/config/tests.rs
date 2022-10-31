@@ -1,6 +1,8 @@
 use std::{fs::File, io::Read};
 
-use super::*;
+use camino::Utf8PathBuf;
+
+use super::parsing::{parse_project_file, parse_task_file, parse_workspace_file};
 
 #[test]
 fn test_can_load_project_file() {

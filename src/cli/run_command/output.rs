@@ -8,7 +8,7 @@ use crate::workspace::{TaskInfo, TaskRef};
 pub fn build_command_outputs(tasks: &[&TaskInfo]) -> HashMap<TaskRef, CommandOutput> {
     let max_project_len = tasks
         .iter()
-        .map(|t| t.project.name().len())
+        .map(|t| t.project_name.len())
         .max()
         .unwrap_or_default();
     let max_task_len = tasks.iter().map(|t| t.name.len()).max().unwrap_or_default();
@@ -62,7 +62,7 @@ impl CommandOutput {
     ) -> CommandOutput {
         let annotation = format!(
             "{:>project_width$} | {:<task_width$} ",
-            task.project.name(),
+            task.project_name,
             task.name,
             project_width = max_project_len,
             task_width = max_task_len

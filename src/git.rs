@@ -106,7 +106,7 @@ where
 
         if !files.is_empty() {
             command.push("--");
-            command.extend(files.iter().map(|s| -> &str { s.as_ref() }))
+            command.extend(files.iter().map(|s| -> &str { s.as_ref() }));
         }
 
         self.execute(command)

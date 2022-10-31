@@ -1,12 +1,13 @@
 ---
 source: src/config/loader/tests.rs
-assertion_line: 7
 expression: "load_config_from_path(\"sample-monorepo/\".into())"
 ---
 Ok(
     (
         WorkspaceFile {
-            workspace_root: "/Users/graeme/src/unknown/sample-monorepo",
+            workspace_root: WorkspaceRoot(
+                "/Users/graeme/src/unknown/sample-monorepo",
+            ),
             config: WorkspaceDefinition {
                 name: "my-workspace",
                 project_paths: [
@@ -31,14 +32,35 @@ Ok(
         },
         [
             ProjectFile {
-                project_root: "projects/a-service",
+                project_root: NormalisedPath {
+                    workspace_root: WorkspaceRoot(
+                        "/Users/graeme/src/unknown/sample-monorepo",
+                    ),
+                    subpath: "projects/a-service",
+                },
                 config: ProjectDefinition {
                     project: "a-service",
                     dependencies: DependencyBlock {
                         projects: [
-                            "a-lib",
+                            ConfigPath {
+                                span: SourceSpan {
+                                    offset: SourceOffset(
+                                        96,
+                                    ),
+                                    length: SourceOffset(
+                                        10,
+                                    ),
+                                },
+                                inner: Normalised(
+                                    NormalisedPath {
+                                        workspace_root: WorkspaceRoot(
+                                            "/Users/graeme/src/unknown/sample-monorepo",
+                                        ),
+                                        subpath: "projects/a-lib",
+                                    },
+                                ),
+                            },
                         ],
-                        paths: [],
                     },
                     tasks: TaskBlock {
                         imports: [],
@@ -72,12 +94,16 @@ Ok(
                 },
             },
             ProjectFile {
-                project_root: "projects/a-lib",
+                project_root: NormalisedPath {
+                    workspace_root: WorkspaceRoot(
+                        "/Users/graeme/src/unknown/sample-monorepo",
+                    ),
+                    subpath: "projects/a-lib",
+                },
                 config: ProjectDefinition {
                     project: "a-lib",
                     dependencies: DependencyBlock {
                         projects: [],
-                        paths: [],
                     },
                     tasks: TaskBlock {
                         imports: [],

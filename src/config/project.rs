@@ -1,4 +1,7 @@
-use super::tasks;
+use super::{
+    paths::{ConfigPath, ConfigPathValidationError, NormalisedPath, PathError, WorkspaceRoot},
+    tasks,
+};
 
 #[derive(knuffel::Decode, Debug)]
 pub struct ProjectDefinition {
@@ -15,12 +18,23 @@ pub struct ProjectDefinition {
 #[derive(knuffel::Decode, Debug, Default)]
 pub struct DependencyBlock {
     #[knuffel(children(name = "project"), unwrap(argument))]
-    pub projects: Vec<String>,
-
-    #[knuffel(children(name = "path"), unwrap(argument))]
-    pub paths: Vec<String>,
+    pub projects: Vec<ConfigPath>,
     // #[knuffel(children(name = "import"))]
     // pub imports: Vec<DependencyImport>,
+}
+
+impl ProjectDefinition {
+    pub fn validate_and_normalise(
+        &mut self,
+        workspace_root: &WorkspaceRoot,
+        project_path: &NormalisedPath,
+    ) -> Result<(), ConfigPathValidationError> {
+        for path in &mut self.dependencies.projects {
+            path.normalise_relative_to(project_path)?;
+        }
+        self.tasks.validate_and_normalise(project_path)?;
+        Ok(())
+    }
 }
 
 // #[derive(knuffel::Decode, Debug)]

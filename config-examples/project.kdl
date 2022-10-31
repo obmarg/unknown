@@ -2,8 +2,7 @@ project "my_project"
 // TODO: need a way to do tags.
 
 dependencies {
-    project "other_project"
-    path "lib/whatever"
+    project "../other_project"
 
     // maybe want to be able to import deps from lang specific files?
     // not going to implement that yet though

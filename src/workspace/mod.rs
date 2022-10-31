@@ -1,22 +1,20 @@
 use std::collections::{HashMap, HashSet};
 
-use crate::config;
+use crate::config::{self, NormalisedPath, WorkspaceRoot};
 
 use self::graph::WorkspaceGraph;
 
 mod graph;
-mod paths;
 
 #[cfg(test)]
 mod tests;
 
 use camino::Utf8Path;
 use globset::Glob;
-pub use paths::WorkspacePath;
 
 pub struct Workspace {
     info: WorkspaceInfo,
-    project_map: HashMap<String, ProjectInfo>,
+    project_map: HashMap<ProjectRef, ProjectInfo>,
     pub graph: graph::WorkspaceGraph,
 }
 
@@ -41,7 +39,7 @@ struct WorkspaceInfo {
     #[allow(unused)]
     name: String,
     project_paths: Vec<Glob>,
-    root_path: WorkspacePath,
+    root_path: WorkspaceRoot,
 }
 
 impl Workspace {
@@ -57,32 +55,36 @@ impl Workspace {
                 .into_iter()
                 .map(|g| g.into_inner())
                 .collect(),
-            root_path: WorkspacePath::for_workspace(&workspace_file.workspace_root),
+            root_path: workspace_file.workspace_root,
         };
 
-        let project_names = project_files
+        let project_paths = project_files
             .iter()
-            .map(|project_file| &project_file.config.project)
+            .map(|project_file| project_file.project_root.clone())
             .collect::<HashSet<_>>();
 
         let mut project_map = HashMap::with_capacity(project_files.len());
 
-        for project_file in &project_files {
-            let project_ref = ProjectRef(project_file.config.project.clone());
+        for project_file in project_files {
+            let project_ref = ProjectRef(project_file.project_root.clone());
 
             let mut dependencies = Vec::new();
-            // TODO: handle other dependencies
-            for project in &project_file.config.dependencies.projects {
-                if !project_names.contains(&project) {
-                    panic!("Unknown project: {project}");
+            for path in project_file.config.dependencies.projects {
+                let path = path
+                    .into_normalised()
+                    .expect("the parser to have normalised ConfigPaths");
+
+                if !project_paths.contains(&path) {
+                    panic!("Unknown project: {path}");
                 }
-                dependencies.push(ProjectRef(project.clone()));
+                dependencies.push(ProjectRef(path));
             }
 
             let mut tasks = Vec::new();
             // TODO: handle task imports
             for task in &project_file.config.tasks.tasks {
                 tasks.push(TaskInfo {
+                    project_name: project_file.config.project.clone(),
                     project: project_ref.clone(),
                     name: task.name.clone(),
                     commands: task.commands.clone(),
@@ -96,12 +98,12 @@ impl Workspace {
             }
 
             project_map.insert(
-                project_file.config.project.clone(),
+                project_ref.clone(),
                 ProjectInfo {
                     name: project_file.config.project.clone(),
                     dependencies,
                     tasks,
-                    root: workspace_info.root_path.subpath(&project_file.project_root),
+                    root: project_file.project_root,
                 },
             );
         }
@@ -117,8 +119,9 @@ impl Workspace {
         self.project_map.values()
     }
 
-    pub fn lookup_project(&self, name: impl AsRef<str>) -> Option<&ProjectInfo> {
-        self.project_map.get(name.as_ref())
+    pub fn project_at_path(&self, path: impl AsRef<Utf8Path>) -> Option<&ProjectInfo> {
+        let project_ref = ProjectRef(self.info.root_path.normalise_subpath(path.as_ref()).ok()?);
+        self.project_map.get(&project_ref)
     }
 
     pub fn root_path(&self) -> &Utf8Path {
@@ -141,13 +144,13 @@ impl ProjectRef {
     pub fn lookup<'a>(&self, workspace: &'a Workspace) -> &'a ProjectInfo {
         // TODO: This basically assumes a ProjectRef is always valid.
         // Probably need to enforce that with types somehow or make this return an option
-        &workspace.project_map[&self.0]
+        &workspace.project_map[self]
     }
 }
 
 impl TaskRef {
     pub fn lookup<'a>(&self, workspace: &'a Workspace) -> &'a TaskInfo {
-        workspace.project_map[&self.0 .0]
+        workspace.project_map[&self.0]
             .tasks
             .iter()
             .find(|task| task.name == self.1)
@@ -160,12 +163,12 @@ pub struct ProjectInfo {
     pub name: String,
     pub dependencies: Vec<ProjectRef>,
     pub tasks: Vec<TaskInfo>,
-    pub root: WorkspacePath,
+    pub root: NormalisedPath,
 }
 
 impl ProjectInfo {
     pub fn project_ref(&self) -> ProjectRef {
-        ProjectRef(self.name.clone())
+        ProjectRef(self.root.clone())
     }
 
     pub fn lookup_task(&self, name: &str) -> Option<&TaskInfo> {
@@ -173,12 +176,12 @@ impl ProjectInfo {
     }
 }
 
-#[derive(Clone, Debug, Hash, PartialEq, Eq)]
-pub struct ProjectRef(String);
+#[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
+pub struct ProjectRef(NormalisedPath);
 
 impl ProjectRef {
-    pub fn name(&self) -> &str {
-        &self.0
+    pub fn as_str(&self) -> &str {
+        self.0.as_subpath().as_str()
     }
 }
 
@@ -186,8 +189,8 @@ impl ProjectRef {
 pub struct TaskRef(ProjectRef, String);
 
 impl TaskRef {
-    pub fn project_name(&self) -> &str {
-        &self.0 .0
+    pub fn project(&self) -> &ProjectRef {
+        &self.0
     }
 
     pub fn task_name(&self) -> &str {
@@ -197,7 +200,7 @@ impl TaskRef {
 
 impl std::fmt::Display for TaskRef {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}::{}", self.project_name(), self.task_name())
+        write!(f, "{}::{}", self.0.as_str(), self.task_name())
     }
 }
 
@@ -205,6 +208,7 @@ impl std::fmt::Display for TaskRef {
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct TaskInfo {
     pub project: ProjectRef,
+    pub project_name: String,
     pub name: String,
     pub commands: Vec<String>,
     pub dependencies: Vec<TaskDependency>,

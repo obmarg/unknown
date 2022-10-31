@@ -1,147 +1,176 @@
 ---
 source: src/config/tests.rs
-assertion_line: 13
 expression: "parse_project_file(&Utf8PathBuf::from(\"blah/project.kdl\"),\n        &dbg!(str_data)).map_err(|e| miette::Report::new(e.0))"
 ---
 Ok(
-    ProjectFile {
-        project_root: "blah",
-        config: ProjectDefinition {
-            project: "my_project",
-            dependencies: DependencyBlock {
-                projects: [
-                    "other_project",
-                ],
-                paths: [
-                    "lib/whatever",
-                ],
-            },
-            tasks: TaskBlock {
-                imports: [
-                    "/.tasks/*",
-                    ".tasks/my_task",
-                ],
-                tasks: [
-                    TaskDefinition {
-                        name: "build",
-                        commands: [
-                            "cargo build",
-                        ],
-                        dependencies: [
-                            TaskDependency {
-                                task: "generate",
-                                for_project_deps: Some(
-                                    true,
-                                ),
-                                include_this_package: None,
-                            },
-                        ],
-                        input_blocks: [
-                            InputBlock {
-                                paths: [
-                                    Glob(
-                                        Glob {
-                                            glob: "whatever.txt",
-                                            re: "(?-u)^whatever\\.txt$",
-                                            opts: GlobOptions {
-                                                case_insensitive: false,
-                                                literal_separator: false,
-                                                backslash_escape: true,
-                                            },
-                                            tokens: Tokens(
-                                                [
-                                                    Literal(
-                                                        'w',
-                                                    ),
-                                                    Literal(
-                                                        'h',
-                                                    ),
-                                                    Literal(
-                                                        'a',
-                                                    ),
-                                                    Literal(
-                                                        't',
-                                                    ),
-                                                    Literal(
-                                                        'e',
-                                                    ),
-                                                    Literal(
-                                                        'v',
-                                                    ),
-                                                    Literal(
-                                                        'e',
-                                                    ),
-                                                    Literal(
-                                                        'r',
-                                                    ),
-                                                    Literal(
-                                                        '.',
-                                                    ),
-                                                    Literal(
-                                                        't',
-                                                    ),
-                                                    Literal(
-                                                        'x',
-                                                    ),
-                                                    Literal(
-                                                        't',
-                                                    ),
-                                                ],
-                                            ),
-                                        },
-                                    ),
-                                    Glob(
-                                        Glob {
-                                            glob: "whatever/**",
-                                            re: "(?-u)^whatever/.*$",
-                                            opts: GlobOptions {
-                                                case_insensitive: false,
-                                                literal_separator: false,
-                                                backslash_escape: true,
-                                            },
-                                            tokens: Tokens(
-                                                [
-                                                    Literal(
-                                                        'w',
-                                                    ),
-                                                    Literal(
-                                                        'h',
-                                                    ),
-                                                    Literal(
-                                                        'a',
-                                                    ),
-                                                    Literal(
-                                                        't',
-                                                    ),
-                                                    Literal(
-                                                        'e',
-                                                    ),
-                                                    Literal(
-                                                        'v',
-                                                    ),
-                                                    Literal(
-                                                        'e',
-                                                    ),
-                                                    Literal(
-                                                        'r',
-                                                    ),
-                                                    RecursiveSuffix,
-                                                ],
-                                            ),
-                                        },
-                                    ),
-                                ],
-                                env_vars: [
-                                    "xyz",
-                                ],
-                                commands: [
-                                    "",
-                                ],
-                            },
-                        ],
+    ProjectDefinition {
+        project: "my_project",
+        dependencies: DependencyBlock {
+            projects: [
+                ConfigPath {
+                    span: SourceSpan {
+                        offset: SourceOffset(
+                            81,
+                        ),
+                        length: SourceOffset(
+                            18,
+                        ),
                     },
-                ],
-            },
+                    inner: Raw(
+                        "../other_project",
+                    ),
+                },
+            ],
+        },
+        tasks: TaskBlock {
+            imports: [
+                ConfigPath {
+                    span: SourceSpan {
+                        offset: SourceOffset(
+                            710,
+                        ),
+                        length: SourceOffset(
+                            11,
+                        ),
+                    },
+                    inner: Raw(
+                        "/.tasks/*",
+                    ),
+                },
+                ConfigPath {
+                    span: SourceSpan {
+                        offset: SourceOffset(
+                            763,
+                        ),
+                        length: SourceOffset(
+                            16,
+                        ),
+                    },
+                    inner: Raw(
+                        ".tasks/my_task",
+                    ),
+                },
+            ],
+            tasks: [
+                TaskDefinition {
+                    name: "build",
+                    commands: [
+                        "cargo build",
+                    ],
+                    dependencies: [
+                        TaskDependency {
+                            task: "generate",
+                            for_project_deps: Some(
+                                true,
+                            ),
+                            include_this_package: None,
+                        },
+                    ],
+                    input_blocks: [
+                        InputBlock {
+                            paths: [
+                                Glob(
+                                    Glob {
+                                        glob: "whatever.txt",
+                                        re: "(?-u)^whatever\\.txt$",
+                                        opts: GlobOptions {
+                                            case_insensitive: false,
+                                            literal_separator: false,
+                                            backslash_escape: true,
+                                        },
+                                        tokens: Tokens(
+                                            [
+                                                Literal(
+                                                    'w',
+                                                ),
+                                                Literal(
+                                                    'h',
+                                                ),
+                                                Literal(
+                                                    'a',
+                                                ),
+                                                Literal(
+                                                    't',
+                                                ),
+                                                Literal(
+                                                    'e',
+                                                ),
+                                                Literal(
+                                                    'v',
+                                                ),
+                                                Literal(
+                                                    'e',
+                                                ),
+                                                Literal(
+                                                    'r',
+                                                ),
+                                                Literal(
+                                                    '.',
+                                                ),
+                                                Literal(
+                                                    't',
+                                                ),
+                                                Literal(
+                                                    'x',
+                                                ),
+                                                Literal(
+                                                    't',
+                                                ),
+                                            ],
+                                        ),
+                                    },
+                                ),
+                                Glob(
+                                    Glob {
+                                        glob: "whatever/**",
+                                        re: "(?-u)^whatever/.*$",
+                                        opts: GlobOptions {
+                                            case_insensitive: false,
+                                            literal_separator: false,
+                                            backslash_escape: true,
+                                        },
+                                        tokens: Tokens(
+                                            [
+                                                Literal(
+                                                    'w',
+                                                ),
+                                                Literal(
+                                                    'h',
+                                                ),
+                                                Literal(
+                                                    'a',
+                                                ),
+                                                Literal(
+                                                    't',
+                                                ),
+                                                Literal(
+                                                    'e',
+                                                ),
+                                                Literal(
+                                                    'v',
+                                                ),
+                                                Literal(
+                                                    'e',
+                                                ),
+                                                Literal(
+                                                    'r',
+                                                ),
+                                                RecursiveSuffix,
+                                            ],
+                                        ),
+                                    },
+                                ),
+                            ],
+                            env_vars: [
+                                "xyz",
+                            ],
+                            commands: [
+                                "",
+                            ],
+                        },
+                    ],
+                },
+            ],
         },
     },
 )

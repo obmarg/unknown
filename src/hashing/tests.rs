@@ -18,8 +18,8 @@ mod hash_file_inputs {
 
         let globs = &[Glob::new("*").unwrap()];
 
-        hash_file_inputs(&files.root(), globs, &mut first_hashes).unwrap();
-        hash_file_inputs(&files.root(), globs, &mut second_hashes).unwrap();
+        hash_file_inputs(&files.root().into(), globs, &mut first_hashes).unwrap();
+        hash_file_inputs(&files.root().into(), globs, &mut second_hashes).unwrap();
 
         assert_eq!(first_hashes, second_hashes)
     }
@@ -35,11 +35,11 @@ mod hash_file_inputs {
 
         let globs = &[Glob::new("*").unwrap()];
 
-        hash_file_inputs(&files.root(), globs, &mut first_hashes).unwrap();
+        hash_file_inputs(&files.root().into(), globs, &mut first_hashes).unwrap();
 
         files.add_file("test.txt", "");
 
-        hash_file_inputs(&files.root(), globs, &mut second_hashes).unwrap();
+        hash_file_inputs(&files.root().into(), globs, &mut second_hashes).unwrap();
 
         assert_ne!(first_hashes, second_hashes)
     }
@@ -53,12 +53,12 @@ mod hash_file_inputs {
 
         let globs = &[Glob::new("src/*").unwrap()];
 
-        hash_file_inputs(&files.root(), globs, &mut first_hashes).unwrap();
+        hash_file_inputs(&files.root().into(), globs, &mut first_hashes).unwrap();
 
         // Add a file that does not match our glob
         files.add_file("test.txt", "");
 
-        hash_file_inputs(&files.root(), globs, &mut second_hashes).unwrap();
+        hash_file_inputs(&files.root().into(), globs, &mut second_hashes).unwrap();
 
         assert_eq!(first_hashes, second_hashes)
     }

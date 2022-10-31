@@ -2,7 +2,7 @@ project "a-service"
 
 // Guess dependencies could be also be a block?
 dependencies {
-    project "a-lib"
+    project "../a-lib"
 }
 
 tasks {

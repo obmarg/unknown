@@ -147,7 +147,7 @@ pub fn run(workspace: Workspace, opts: RunOpts) -> miette::Result<()> {
 
 // Infers the run filter based on the current directory (if any)
 fn infer_filter(workspace_root: &Utf8Path, globset: &GlobSet) -> Option<ProjectFilter> {
-    let current_path =
+    let mut current_path =
         Utf8PathBuf::try_from(std::env::current_dir().expect("to have a current directory"))
             .expect("current_dir to be utf8");
 
@@ -157,6 +157,9 @@ fn infer_filter(workspace_root: &Utf8Path, globset: &GlobSet) -> Option<ProjectF
             if globset.is_match(relative_path) {
                 return Some(ProjectFilter::path(relative_path.to_path_buf()));
             }
+        }
+        if !current_path.pop() {
+            break;
         }
     }
 
@@ -178,7 +181,7 @@ fn filter_projects(workspace: &Workspace, filter: Option<ProjectFilter>) -> Hash
         // First determine which projects match this spec.
         for project in workspace.projects() {
             let matches = match &spec.matcher {
-                super::filters::Matcher::Path(path) => project.root.relative() == path,
+                super::filters::Matcher::Path(path) => project.root.as_subpath() == path,
                 super::filters::Matcher::Name(name) => project.name == *name,
             };
             if matches {

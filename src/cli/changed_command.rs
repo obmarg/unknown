@@ -2,10 +2,7 @@ use std::collections::HashSet;
 
 use tabled::{Table, Tabled};
 
-use crate::{
-    git,
-    workspace::{Workspace, WorkspacePath},
-};
+use crate::{config::NormalisedPath, git, workspace::Workspace};
 
 #[derive(clap::Parser)]
 pub struct ChangedOpts {
@@ -43,7 +40,7 @@ pub fn run(workspace: Workspace, opts: ChangedOpts) -> miette::Result<()> {
         .flat_map(|file| {
             workspace
                 .projects()
-                .filter(|project| file.starts_with(&project.root))
+                .filter(|project| file.starts_with(&project.root.full_path()))
                 .collect::<Vec<_>>()
         })
         .collect::<HashSet<_>>();
@@ -88,7 +85,7 @@ pub fn run(workspace: Workspace, opts: ChangedOpts) -> miette::Result<()> {
 #[derive(serde::Serialize, Tabled)]
 pub struct Output {
     name: String,
-    path: WorkspacePath,
+    path: NormalisedPath,
     // TODO: Might be good to include the reason it was included in here as well.
 }
 

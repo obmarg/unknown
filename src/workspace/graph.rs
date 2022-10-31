@@ -11,18 +11,21 @@ type Graph = petgraph::Graph<WorkspaceNode, WorkspaceEdge>;
 
 pub struct WorkspaceGraph {
     graph: Graph,
-    project_indices: HashMap<String, NodeIndex>,
+    project_indices: HashMap<ProjectRef, NodeIndex>,
     task_indices: HashMap<TaskRef, NodeIndex>,
 }
 
 impl WorkspaceGraph {
-    pub(super) fn new(_info: &WorkspaceInfo, project_map: &HashMap<String, ProjectInfo>) -> Self {
+    pub(super) fn new(
+        _info: &WorkspaceInfo,
+        project_map: &HashMap<ProjectRef, ProjectInfo>,
+    ) -> Self {
         let mut graph = Graph::new();
         let root_index = graph.add_node(WorkspaceNode::WorkspaceRoot);
 
         let mut project_indices = HashMap::new();
-        for name in project_map.keys() {
-            let node_index = graph.add_node(WorkspaceNode::Project(ProjectRef(name.clone())));
+        for (name, project) in project_map.iter() {
+            let node_index = graph.add_node(WorkspaceNode::Project(project.project_ref()));
             graph.add_edge(root_index, node_index, WorkspaceEdge::HasProject);
 
             project_indices.insert(name.clone(), node_index);
@@ -36,7 +39,7 @@ impl WorkspaceGraph {
                 let task_index = graph.add_node(WorkspaceNode::Task(task.task_ref()));
                 task_indices.insert(task.task_ref(), task_index);
                 graph.add_edge(
-                    project_indices[&project_info.name],
+                    project_indices[&project_info.project_ref()],
                     task_index,
                     WorkspaceEdge::HasTask,
                 );
@@ -45,13 +48,13 @@ impl WorkspaceGraph {
             // Create project dependency edges
             for dependency in &project_info.dependencies {
                 graph.add_edge(
-                    project_indices[&project_info.name],
-                    project_indices[&dependency.0],
+                    project_indices[&project_info.project_ref()],
+                    project_indices[dependency],
                     WorkspaceEdge::ProjectDependsOn,
                 );
                 graph.add_edge(
-                    project_indices[&dependency.0],
-                    project_indices[&project_info.name],
+                    project_indices[dependency],
+                    project_indices[&project_info.project_ref()],
                     WorkspaceEdge::ProjectDependedOnBy,
                 );
             }
@@ -70,7 +73,7 @@ impl WorkspaceGraph {
         rv
     }
 
-    fn generate_task_edges(&mut self, project_map: &HashMap<String, ProjectInfo>) {
+    fn generate_task_edges(&mut self, project_map: &HashMap<ProjectRef, ProjectInfo>) {
         for project in project_map.values() {
             for task in &project.tasks {
                 let current_task_index = self.task_indices[&task.task_ref()];
@@ -100,7 +103,7 @@ impl WorkspaceGraph {
 
                     if dependency.target_deps {
                         for project_dep in &project.dependencies {
-                            let project_dep = &project_map[&project_dep.0];
+                            let project_dep = &project_map[project_dep];
 
                             let maybe_index = project_dep
                                 .lookup_task(dependency_name)
@@ -134,7 +137,7 @@ impl WorkspaceGraph {
             matches!(edge.weight(), WorkspaceEdge::ProjectDependedOnBy)
         });
 
-        DfsPostOrder::new(&filtered_graph, self.project_indices[&project.0])
+        DfsPostOrder::new(&filtered_graph, self.project_indices[&project])
             .iter(&filtered_graph)
             .filter_map(|index| match &self.graph[index] {
                 WorkspaceNode::Project(project_ref) => Some(project_ref.clone()),
@@ -149,7 +152,7 @@ impl WorkspaceGraph {
             matches!(edge.weight(), WorkspaceEdge::ProjectDependsOn)
         });
 
-        DfsPostOrder::new(&filtered_graph, self.project_indices[&project.0])
+        DfsPostOrder::new(&filtered_graph, self.project_indices[&project])
             .iter(&filtered_graph)
             .filter_map(|index| match &self.graph[index] {
                 WorkspaceNode::Project(project_ref) => Some(project_ref.clone()),

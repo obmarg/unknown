@@ -25,21 +25,18 @@ impl HashRegistry {
 
         let contents = serde_json::from_reader::<_, RegistryFileFormat>(File::open(&path)?)?;
 
-        let RegistryFileFormat::V1 { hashes } = contents;
-
-        let hashes = hashes
-            .into_iter()
-            .filter_map(|(task_ref, hashes)| {
-                let (project, task) = task_ref.split_once("::")?;
-
-                let task_ref = workspace
-                    .lookup_project(project)?
-                    .lookup_task(task)?
-                    .task_ref();
-
-                Some((task_ref, hashes))
-            })
-            .collect();
+        let hashes = match contents {
+            #[allow(deprecated)]
+            RegistryFileFormat::V1 { .. } => panic!("v1 hashes no longer supported"),
+            RegistryFileFormat::V2 { hashes } => hashes
+                .into_iter()
+                .flat_map(|task_hashes| {
+                    let project = workspace.project_at_path(task_hashes.project)?;
+                    let task_ref = project.lookup_task(&task_hashes.task)?.task_ref();
+                    Some((task_ref, task_hashes.hahes))
+                })
+                .collect(),
+        };
 
         Ok(HashRegistry {
             path,
@@ -60,14 +57,13 @@ impl HashRegistry {
 
     pub fn save(self) -> Result<(), HashRegistrySaveError> {
         let hashes = self.hashes.into_inner().expect("Mutex to not be poisoned");
-        let contents = RegistryFileFormat::V1 {
+        let contents = RegistryFileFormat::V2 {
             hashes: hashes
                 .into_iter()
-                .map(|(task_ref, hashes)| {
-                    (
-                        format!("{}::{}", task_ref.project_name(), task_ref.task_name()),
-                        hashes,
-                    )
+                .map(|(task_ref, hashes)| V2SerializableHashes {
+                    project: task_ref.project().as_str().to_owned(),
+                    task: task_ref.task_name().to_owned(),
+                    hahes: hashes,
                 })
                 .collect(),
         };
@@ -83,11 +79,24 @@ impl HashRegistry {
     }
 }
 
-#[derive(serde::Serialize, serde::Deserialize)]
-#[serde(tag = "version")]
-enum RegistryFileFormat {
-    V1 { hashes: HashMap<String, TaskHashes> },
+#[allow(deprecated)]
+mod format {
+    use super::*;
+
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[serde(tag = "version")]
+    pub(super) enum RegistryFileFormat {
+        #[deprecated]
+        V1 {
+            hashes: HashMap<String, TaskHashes>,
+        },
+        V2 {
+            hashes: Vec<V2SerializableHashes>,
+        },
+    }
 }
+
+use format::RegistryFileFormat;
 
 #[derive(Debug, miette::Diagnostic, thiserror::Error)]
 #[diagnostic(help(
@@ -106,4 +115,11 @@ pub enum HashRegistrySaveError {
     IoError(#[from] std::io::Error),
     #[error("Couldn't serialize hashes file: {0}")]
     SerializeError(#[from] serde_json::Error),
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+struct V2SerializableHashes {
+    project: String,
+    task: String,
+    hahes: TaskHashes,
 }
