@@ -1452,6 +1452,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3ed742d4ea2bd1176e236172c8429aaf54486e7ac098db29ffe6529e0ce50973"
 
 [[package]]
+name = "unindent"
+version = "0.1.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "58ee9362deb4a96cef4d437d1ad49cffc9b9e92d202b6995674e928ce684f112"
+
+[[package]]
 name = "unknown"
 version = "0.1.0"
 dependencies = [
@@ -1481,6 +1487,7 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-subscriber",
+ "unindent",
 ]
 
 [[package]]

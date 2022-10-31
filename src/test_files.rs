@@ -26,7 +26,9 @@ impl TestFiles {
         std::fs::create_dir_all(path.parent().expect("path to have a parent"))
             .expect("to be able to create any dirs");
 
-        std::fs::write(path, contents.as_ref()).expect("to be able to write a file")
+        let contents = unindent::unindent(contents.as_ref());
+
+        std::fs::write(path, contents).expect("to be able to write a file")
     }
 
     pub fn with_file<Name: ?Sized + AsRef<str>, Contents: ?Sized + AsRef<str>>(

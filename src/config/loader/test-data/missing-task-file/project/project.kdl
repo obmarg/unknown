@@ -1,5 +1,0 @@
-project "missing-task-file-project"
-
-tasks {
-    import "missing.nabs"
-}

@@ -3,8 +3,8 @@ use globset::{Glob, GlobSetBuilder};
 use ignore::WalkBuilder;
 
 use super::{
-    parsing::{parse_project_file, parse_task_file, parse_workspace_file, ParsingError},
-    paths::{NormalisedPath, PathError, WorkspaceRoot},
+    parsing::{parse_project_file, parse_task_file, parse_workspace_file},
+    paths::{NormalisedPath, WorkspaceRoot},
     ProjectFile, WorkspaceFile,
 };
 
@@ -50,14 +50,12 @@ pub fn load_config_from_path(
                 .parent()
                 .expect("a file path to always have a parent");
 
-            config
-                .validate_and_normalise(&workspace_root, &project_root)
-                .map_err(|e| {
-                    miette::Report::new(e).with_source_code(miette::NamedSource::new(
-                        project_file_path.as_subpath(),
-                        config_text,
-                    ))
-                })?;
+            config.validate_and_normalise(&project_root).map_err(|e| {
+                miette::Report::new(e).with_source_code(miette::NamedSource::new(
+                    project_file_path.as_subpath(),
+                    config_text,
+                ))
+            })?;
 
             let project_file = ProjectFile {
                 project_root,

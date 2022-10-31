@@ -1,0 +1,14 @@
+---
+source: src/config/loader/tests.rs
+expression: "render_miette(err, &test_files)"
+---
+
+  × The provided path was not in the workspace: /
+   ╭─[project/project.kdl:2:1]
+ 2 │ dependencies {
+ 3 │     project "../../"
+   ·             ────┬───
+   ·                 ╰── the path is referenced here
+ 4 │ }
+   ╰────
+

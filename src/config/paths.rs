@@ -33,21 +33,6 @@ impl ConfigPath {
         }
     }
 
-    pub fn normalise(
-        &mut self,
-        workspace_root: &WorkspaceRoot,
-    ) -> Result<(), ConfigPathValidationError> {
-        let PathInner::Raw(path) = std::mem::take(&mut self.inner) else {
-            panic!("Tried to normalise a ConfigPath twice");
-        };
-        self.inner = PathInner::Normalised(
-            workspace_root
-                .normalise_subpath(path)
-                .map_err(|e| ConfigPathValidationError::new(e, self.span))?,
-        );
-        Ok(())
-    }
-
     pub fn normalise_relative_to(
         &mut self,
         relative_to: &NormalisedPath,
@@ -162,6 +147,12 @@ pub struct WorkspaceRoot(Utf8PathBuf);
 impl AsRef<Utf8Path> for WorkspaceRoot {
     fn as_ref(&self) -> &Utf8Path {
         self.0.as_ref()
+    }
+}
+
+impl From<WorkspaceRoot> for Utf8PathBuf {
+    fn from(val: WorkspaceRoot) -> Self {
+        val.0
     }
 }
 

@@ -1,5 +1,5 @@
 use super::{
-    paths::{ConfigPath, ConfigPathValidationError, NormalisedPath, PathError, WorkspaceRoot},
+    paths::{ConfigPath, ConfigPathValidationError, NormalisedPath},
     tasks,
 };
 
@@ -26,7 +26,6 @@ pub struct DependencyBlock {
 impl ProjectDefinition {
     pub fn validate_and_normalise(
         &mut self,
-        workspace_root: &WorkspaceRoot,
         project_path: &NormalisedPath,
     ) -> Result<(), ConfigPathValidationError> {
         for path in &mut self.dependencies.projects {
