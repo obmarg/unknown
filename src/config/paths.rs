@@ -12,7 +12,7 @@ pub struct ConfigPath {
 #[derive(Clone, Debug)]
 pub enum PathInner {
     Raw(Utf8PathBuf),
-    Normalised(NormalisedPath),
+    Normalised(ValidPath),
 }
 
 impl Default for PathInner {
@@ -26,23 +26,30 @@ impl ConfigPath {
     //     self.span.clone()
     // }
 
-    pub fn into_normalised(self) -> Option<NormalisedPath> {
+    pub fn into_raw(self) -> Option<Utf8PathBuf> {
+        match self.inner {
+            PathInner::Raw(inner) => Some(inner),
+            PathInner::Normalised(_) => None,
+        }
+    }
+
+    pub fn into_normalised(self) -> Option<ValidPath> {
         match self.inner {
             PathInner::Raw(_) => None,
             PathInner::Normalised(inner) => Some(inner),
         }
     }
 
-    pub fn normalise_relative_to(
+    pub fn validate_relative_to(
         &mut self,
-        relative_to: &NormalisedPath,
+        relative_to: &ValidPath,
     ) -> Result<(), ConfigPathValidationError> {
         let PathInner::Raw(path) = std::mem::take(&mut self.inner) else {
             panic!("Tried to normalise a ConfigPath twice");
         };
         self.inner = PathInner::Normalised(
             relative_to
-                .normalise_relative(path)
+                .join_and_validate(path)
                 .map_err(|e| ConfigPathValidationError::new(e, self.span))?,
         );
         Ok(())
@@ -162,9 +169,9 @@ impl AsRef<std::path::Path> for WorkspaceRoot {
     }
 }
 
-impl From<WorkspaceRoot> for NormalisedPath {
+impl From<WorkspaceRoot> for ValidPath {
     fn from(val: WorkspaceRoot) -> Self {
-        NormalisedPath {
+        ValidPath {
             workspace_root: val,
             subpath: Utf8PathBuf::new(),
         }
@@ -176,10 +183,7 @@ impl WorkspaceRoot {
         WorkspaceRoot(path.into())
     }
 
-    pub fn normalise_subpath(
-        &self,
-        path: impl Into<Utf8PathBuf>,
-    ) -> Result<NormalisedPath, PathError> {
+    pub fn normalise_absolute(&self, path: impl Into<Utf8PathBuf>) -> Result<ValidPath, PathError> {
         let path = path.into();
         let absolute = match path.is_absolute() {
             true => path,
@@ -195,47 +199,61 @@ impl WorkspaceRoot {
             .map_err(|_| PathError::PathNotInWorkspace(absolute.clone()))?
             .to_owned();
 
-        Ok(NormalisedPath {
+        Ok(ValidPath {
             workspace_root: self.clone(),
             subpath,
         })
     }
+
+    pub fn subpath(&self, path: impl Into<Utf8PathBuf>) -> Result<RelativePath, PathError> {
+        let mut path = path.into();
+        if path.is_absolute() {
+            path = Utf8PathBuf::from(path.as_str().strip_prefix('/').unwrap());
+        }
+        RelativePath::new(self.clone(), &self.0, path)
+    }
 }
 
+/// A RelativePath is one that has been normalised & validated that
+/// it appears to be in the workspace.  It has not been canonicalised
+/// so if any components are symlinks it may not be in the repository.
+///
+/// Accordingly, care should be taken where these are used.  They should
+/// really only be used when files may not be present, otherwise they
+/// should be made into a `ValidPath` via `validate`.
+///
+/// Where paths should exist on disk we should work with these paths.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct NormalisedPath {
+pub struct RelativePath {
     workspace_root: WorkspaceRoot,
     subpath: Utf8PathBuf,
 }
 
-impl std::fmt::Display for NormalisedPath {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.subpath)
-    }
-}
+impl RelativePath {
+    fn new(
+        workspace_root: WorkspaceRoot,
+        base: &Utf8Path,
+        relative_path: Utf8PathBuf,
+    ) -> Result<RelativePath, PathError> {
+        let absolute = base.join(relative_path);
+        let normalised = normalize_path(&absolute);
+        let subpath = absolute
+            .strip_prefix(&workspace_root.0)
+            .map_err(|_| PathError::PathNotInWorkspace(absolute.clone()))?
+            .to_owned();
 
-impl NormalisedPath {
-    pub fn full_path(&self) -> Utf8PathBuf {
-        self.workspace_root.0.join(&self.subpath)
-    }
-
-    pub fn as_subpath(&self) -> &Utf8PathBuf {
-        &self.subpath
-    }
-
-    pub fn parent(&self) -> Option<NormalisedPath> {
-        self.subpath.parent().map(|subpath| NormalisedPath {
-            workspace_root: self.workspace_root.clone(),
-            subpath: subpath.to_owned(),
+        Ok(RelativePath {
+            workspace_root,
+            subpath,
         })
     }
 
-    // Normalises the provided path relative to self (or the root of the repo if path is absolute)
-    fn normalise_relative(
-        &self,
-        path: impl Into<Utf8PathBuf>,
-    ) -> Result<NormalisedPath, PathError> {
-        let mut path = path.into();
+    // Joins the given path onto this one.
+    //
+    // The the given path is absolute the result will be relative to the workspace_root.
+    // If relative it'll be relative to self.
+    pub fn join(&self, relative: impl Into<Utf8PathBuf>) -> Result<RelativePath, PathError> {
+        let mut path = relative.into();
 
         let base;
         match path.is_absolute() {
@@ -248,7 +266,19 @@ impl NormalisedPath {
             }
         };
 
-        let absolute = base.join(path);
+        RelativePath::new(self.workspace_root.clone(), &base, path)
+    }
+
+    pub fn subpath(&self) -> &Utf8Path {
+        &self.subpath
+    }
+
+    pub fn to_absolute(&self) -> Utf8PathBuf {
+        self.workspace_root.0.join(&self.subpath)
+    }
+
+    pub fn validate(self) -> Result<ValidPath, PathError> {
+        let absolute = self.workspace_root.0.join(self.subpath);
         let absolute = absolute
             .canonicalize_utf8()
             .map_err(|e| PathError::from_io_error(e, absolute))?;
@@ -258,14 +288,61 @@ impl NormalisedPath {
             .map_err(|_| PathError::PathNotInWorkspace(absolute.clone()))?
             .to_owned();
 
-        Ok(NormalisedPath {
-            workspace_root: self.workspace_root.clone(),
+        Ok(ValidPath {
+            workspace_root: self.workspace_root,
             subpath,
         })
     }
 }
 
-impl serde::Serialize for NormalisedPath {
+/// A ValidPath is one that has been normalised & canonicalised,
+/// to ensure it definitely exists and is in the workspace,
+/// regardless of any symlinks involved.
+///
+/// Where paths should exist on disk we should work with these paths.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct ValidPath {
+    workspace_root: WorkspaceRoot,
+    subpath: Utf8PathBuf,
+}
+
+impl std::fmt::Display for ValidPath {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.subpath)
+    }
+}
+
+impl ValidPath {
+    pub fn full_path(&self) -> Utf8PathBuf {
+        self.workspace_root.0.join(&self.subpath)
+    }
+
+    pub fn as_subpath(&self) -> &Utf8PathBuf {
+        &self.subpath
+    }
+
+    pub fn parent(&self) -> Option<ValidPath> {
+        self.subpath.parent().map(|subpath| ValidPath {
+            workspace_root: self.workspace_root.clone(),
+            subpath: subpath.to_owned(),
+        })
+    }
+
+    pub fn join(&self, relative: impl Into<Utf8PathBuf>) -> Result<RelativePath, PathError> {
+        RelativePath {
+            workspace_root: self.workspace_root.clone(),
+            subpath: self.subpath.clone(),
+        }
+        .join(relative)
+    }
+
+    // Normalises the provided path relative to self (or the root of the repo if path is absolute)
+    fn join_and_validate(&self, path: impl Into<Utf8PathBuf>) -> Result<ValidPath, PathError> {
+        self.join(path)?.validate()
+    }
+}
+
+impl serde::Serialize for ValidPath {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -294,6 +371,34 @@ impl PathError {
             _ => PathError::OtherIo(e),
         }
     }
+}
+
+fn normalize_path(path: &Utf8Path) -> Utf8PathBuf {
+    use camino::Utf8Component;
+    let mut components = path.components().peekable();
+    let mut ret = if let Some(c @ Utf8Component::Prefix(..)) = components.peek().cloned() {
+        components.next();
+        Utf8PathBuf::from(c.as_str())
+    } else {
+        Utf8PathBuf::new()
+    };
+
+    for component in components {
+        match component {
+            Utf8Component::Prefix(..) => unreachable!(),
+            Utf8Component::RootDir => {
+                ret.push(component.as_str());
+            }
+            Utf8Component::CurDir => {}
+            Utf8Component::ParentDir => {
+                ret.pop();
+            }
+            Utf8Component::Normal(c) => {
+                ret.push(c);
+            }
+        }
+    }
+    ret
 }
 
 #[cfg(test)]

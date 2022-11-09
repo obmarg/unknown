@@ -12,7 +12,7 @@ use rayon::prelude::*;
 pub use registry::{HashRegistry, HashRegistryLoadError};
 
 use crate::{
-    config::NormalisedPath,
+    config::ValidPath,
     workspace::{ProjectInfo, TaskInfo},
 };
 
@@ -53,7 +53,7 @@ pub fn hash_task_inputs(project: &ProjectInfo, task: &TaskInfo) -> Result<Option
 }
 
 fn hash_file_inputs(
-    project_root: &NormalisedPath,
+    project_root: &ValidPath,
     globs: &[Glob],
     hashes: &mut Vec<blake3::Hash>,
 ) -> Result<(), HashError> {

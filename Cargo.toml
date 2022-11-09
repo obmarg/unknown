@@ -18,6 +18,7 @@ globset = "0.4"
 ignore = "0.4.18"
 knuffel = "2.0"
 miette = { version="4.7.1", features=["fancy"] }
+path-clean = "0.1.0"
 petgraph = "0.6"
 rayon = "1.5"
 serde = { version = "1.0", features=["derive"] }
@@ -35,3 +36,8 @@ rstest = "0.15.0"
 similar-asserts = "1.4.2"
 tempfile = "3.3"
 unindent = "0.1.10"
+
+[profile.dev]
+# Disabling debug info speeds up builds a bunch,
+# and I don't rely on it for debugging that much.
+debug = 0

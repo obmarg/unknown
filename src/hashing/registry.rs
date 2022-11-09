@@ -13,7 +13,7 @@ pub struct HashRegistry {
 
 impl HashRegistry {
     pub fn for_workspace(workspace: &Workspace) -> Result<Self, HashRegistryLoadError> {
-        let mut path = Utf8PathBuf::from(workspace.root_path());
+        let mut path = Utf8PathBuf::from(workspace.root_path().clone());
         path.push(".nabs");
         path.push("hashes.json");
         if !path.exists() {

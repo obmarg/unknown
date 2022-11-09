@@ -4,8 +4,8 @@ use ignore::WalkBuilder;
 
 use super::{
     parsing::{parse_project_file, parse_task_file, parse_workspace_file},
-    paths::{NormalisedPath, WorkspaceRoot},
-    ProjectFile, WorkspaceFile,
+    paths::{RelativePath, ValidPath, WorkspaceRoot},
+    UnvalidatedConfig, UnvalidatedProjectFile, ValidProjectFile, WorkspaceFile,
 };
 
 #[cfg(test)]
@@ -13,7 +13,7 @@ mod tests;
 
 pub fn load_config_from_path(
     current_path: Utf8PathBuf,
-) -> Result<(WorkspaceFile, Vec<ProjectFile>), miette::Report> {
+) -> Result<UnvalidatedConfig, miette::Report> {
     let current_path = current_path
         .canonicalize_utf8()
         .expect("to be able to canonicalise current path");
@@ -36,37 +36,29 @@ pub fn load_config_from_path(
         .map(|g| g.clone().into_inner())
         .collect::<Vec<_>>();
 
-    let project_file_paths = find_project_files(&workspace_root, &project_paths);
+    let project_file_paths =
+        find_project_files(&workspace_root, workspace_root.as_ref(), &project_paths);
 
     let project_files = project_file_paths
         .iter()
-        .map(|project_file_path| -> Result<_, miette::Report> {
-            let config_text = std::fs::read_to_string(&project_file_path.full_path())
-                .expect("couldn't read project file");
-            let mut config = parse_project_file(project_file_path.as_subpath(), &config_text)
-                .map_err(miette::Report::new)?;
-
-            let project_root = project_file_path
-                .parent()
-                .expect("a file path to always have a parent");
-
-            config.validate_and_normalise(&project_root).map_err(|e| {
-                miette::Report::new(e).with_source_code(miette::NamedSource::new(
-                    project_file_path.as_subpath(),
-                    config_text,
-                ))
-            })?;
-
-            let project_file = ProjectFile {
-                project_root,
-                config,
-            };
-
-            import_tasks(project_file).map_err(miette::Report::new)
-        })
+        .map(load_project_file)
         .collect::<Result<Vec<_>, _>>()?;
 
-    Ok((workspace_file, project_files))
+    Ok(UnvalidatedConfig {
+        workspace_file,
+        project_files,
+    })
+}
+
+pub fn load_project_files(
+    root: &WorkspaceRoot,
+    path: &RelativePath,
+    project_paths: &[Glob],
+) -> Result<Vec<UnvalidatedProjectFile>, miette::Report> {
+    find_project_files(root, &path.to_absolute(), project_paths)
+        .iter()
+        .map(load_project_file)
+        .collect()
 }
 
 #[derive(Debug, miette::Diagnostic, thiserror::Error)]
@@ -74,7 +66,11 @@ pub fn load_config_from_path(
 #[diagnostic(help("nabs requires a workspace.kdl in the current directory or a parent directory"))]
 struct MissingWorkspaceFile;
 
-fn find_project_files(root: &WorkspaceRoot, project_paths: &[Glob]) -> Vec<NormalisedPath> {
+fn find_project_files(
+    workspace_root: &WorkspaceRoot,
+    path: &Utf8Path,
+    project_paths: &[Glob],
+) -> Vec<ValidPath> {
     let mut glob_builder = GlobSetBuilder::new();
     if project_paths.is_empty() {
         glob_builder.add(Glob::new("**").unwrap());
@@ -84,7 +80,7 @@ fn find_project_files(root: &WorkspaceRoot, project_paths: &[Glob]) -> Vec<Norma
     }
     let glob_set = glob_builder.build().expect("to be able to build globset");
 
-    WalkBuilder::new(root)
+    WalkBuilder::new(path)
         .hidden(false)
         .build()
         .filter_map(|f| f.ok())
@@ -96,13 +92,18 @@ fn find_project_files(root: &WorkspaceRoot, project_paths: &[Glob]) -> Vec<Norma
                     .map(|p| p == "project.kdl")
                     .unwrap_or_default()
             {
-                let relative_folder = file_path.parent().unwrap().strip_prefix(root).unwrap();
+                let relative_folder = file_path
+                    .parent()
+                    .unwrap()
+                    .strip_prefix(workspace_root)
+                    .unwrap();
                 return glob_set.is_match(relative_folder);
             }
             false
         })
         .map(|d| {
-            root.normalise_subpath(Utf8Path::from_path(d.path()).expect("a utf8 path"))
+            workspace_root
+                .normalise_absolute(Utf8Path::from_path(d.path()).expect("a utf8 path"))
                 .expect("to be able to normalise a path found via WalkBuilder")
         })
         .collect()
@@ -125,6 +126,26 @@ fn find_workspace_file(mut current_path: Utf8PathBuf) -> Option<Utf8PathBuf> {
     None
 }
 
+fn load_project_file(
+    project_file_path: &ValidPath,
+) -> Result<UnvalidatedProjectFile, miette::Report> {
+    let source_text = std::fs::read_to_string(&project_file_path.full_path())
+        .expect("couldn't read project file");
+    let mut config = parse_project_file(project_file_path.as_subpath(), &source_text)
+        .map_err(miette::Report::new)?;
+
+    let project_root = project_file_path
+        .parent()
+        .expect("a file path to always have a parent");
+
+    Ok(UnvalidatedProjectFile {
+        project_root,
+        config,
+        source_text,
+        project_file_path: project_file_path.clone(),
+    })
+}
+
 // TODO: ideally want this to reference the place where we failed to load...
 #[derive(Debug, miette::Diagnostic, thiserror::Error)]
 #[diagnostic(help("There was a problem loading a referenced task."))]
@@ -135,7 +156,7 @@ pub enum TaskImportError {
     ParsingError(super::ParsingError),
 }
 
-fn import_tasks(mut project_file: ProjectFile) -> Result<ProjectFile, TaskImportError> {
+pub(super) fn import_tasks(project_file: &mut ValidProjectFile) -> Result<(), TaskImportError> {
     let mut imports = std::mem::take(&mut project_file.config.tasks.imports);
 
     while let Some(import) = imports.pop() {
@@ -164,5 +185,5 @@ fn import_tasks(mut project_file: ProjectFile) -> Result<ProjectFile, TaskImport
         project_file.config.tasks.tasks.extend(config.tasks);
     }
 
-    Ok(project_file)
+    Ok(())
 }

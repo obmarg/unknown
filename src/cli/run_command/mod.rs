@@ -44,8 +44,12 @@ pub fn run(workspace: Workspace, opts: RunOpts) -> miette::Result<()> {
 
     let target_projects = filter_projects(
         &workspace,
-        opts.filter
-            .or_else(|| infer_filter(workspace.root_path(), &workspace.projects_globset())),
+        opts.filter.or_else(|| {
+            infer_filter(
+                workspace.root_path().as_ref(),
+                &workspace.projects_globset(),
+            )
+        }),
     );
     let tasks = find_tasks(&workspace, &target_projects, opts.tasks);
 

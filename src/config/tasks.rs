@@ -1,5 +1,5 @@
 use super::{
-    paths::{ConfigPath, ConfigPathValidationError, NormalisedPath},
+    paths::{ConfigPath, ConfigPathValidationError, ValidPath},
     Glob,
 };
 
@@ -17,10 +17,10 @@ pub struct TaskBlock {
 impl TaskBlock {
     pub(super) fn validate_and_normalise(
         &mut self,
-        relative_to: &NormalisedPath,
+        relative_to: &ValidPath,
     ) -> Result<(), ConfigPathValidationError> {
         for path in &mut self.imports {
-            path.normalise_relative_to(relative_to)?;
+            path.validate_relative_to(relative_to)?;
         }
         Ok(())
     }

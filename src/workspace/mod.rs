@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use crate::config::{self, NormalisedPath, WorkspaceRoot};
+use crate::config::{self, ValidPath, WorkspaceRoot};
 
 use self::graph::WorkspaceGraph;
 
@@ -13,7 +13,7 @@ use camino::Utf8Path;
 use globset::Glob;
 
 pub struct Workspace {
-    info: WorkspaceInfo,
+    pub info: WorkspaceInfo,
     project_map: HashMap<ProjectRef, ProjectInfo>,
     pub graph: graph::WorkspaceGraph,
 }
@@ -35,17 +35,17 @@ impl std::fmt::Debug for Workspace {
 }
 
 #[derive(Debug)]
-struct WorkspaceInfo {
+pub struct WorkspaceInfo {
     #[allow(unused)]
     name: String,
-    project_paths: Vec<Glob>,
-    root_path: WorkspaceRoot,
+    pub project_paths: Vec<Glob>,
+    pub root_path: WorkspaceRoot,
 }
 
 impl Workspace {
     pub fn new(
         workspace_file: config::WorkspaceFile,
-        project_files: Vec<config::ProjectFile>,
+        project_files: Vec<config::ValidProjectFile>,
     ) -> Self {
         let workspace_info = WorkspaceInfo {
             name: workspace_file.config.name,
@@ -120,12 +120,17 @@ impl Workspace {
     }
 
     pub fn project_at_path(&self, path: impl AsRef<Utf8Path>) -> Option<&ProjectInfo> {
-        let project_ref = ProjectRef(self.info.root_path.normalise_subpath(path.as_ref()).ok()?);
+        // TODO: Ok, so this one definitely wants to be
+        let project_ref = ProjectRef(self.info.root_path.normalise_absolute(path.as_ref()).ok()?);
         self.project_map.get(&project_ref)
     }
 
-    pub fn root_path(&self) -> &Utf8Path {
-        self.info.root_path.as_ref()
+    // pub fn lookup_project(&self, name: impl AsRef<str>) -> Option<&ProjectInfo> {
+    //     self.project_map.get(name.as_ref())
+    // }
+
+    pub fn root_path(&self) -> &WorkspaceRoot {
+        &self.info.root_path
     }
 
     pub fn projects_globset(&self) -> globset::GlobSet {
@@ -163,7 +168,7 @@ pub struct ProjectInfo {
     pub name: String,
     pub dependencies: Vec<ProjectRef>,
     pub tasks: Vec<TaskInfo>,
-    pub root: NormalisedPath,
+    pub root: ValidPath,
 }
 
 impl ProjectInfo {
@@ -177,7 +182,7 @@ impl ProjectInfo {
 }
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
-pub struct ProjectRef(NormalisedPath);
+pub struct ProjectRef(ValidPath);
 
 impl ProjectRef {
     pub fn as_str(&self) -> &str {

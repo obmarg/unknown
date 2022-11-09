@@ -6,9 +6,12 @@ use super::*;
 
 #[test]
 fn snapshot_sample_monorepo() {
-    let (workspace, projects) = load_config_from_path("src/workspace/test-data/".into()).unwrap();
+    let config = load_config_from_path("src/workspace/test-data/".into())
+        .unwrap()
+        .validate()
+        .unwrap();
 
-    insta::assert_debug_snapshot!(Workspace::new(workspace, projects))
+    insta::assert_debug_snapshot!(Workspace::new(config.workspace_file, config.project_files))
 }
 
 #[test]
@@ -36,6 +39,10 @@ fn test_task_ref_direct_dependencies() {
 }
 
 fn a_workspace() -> Workspace {
-    let (workspace, projects) = load_config_from_path("src/workspace/test-data/".into()).unwrap();
-    Workspace::new(workspace, projects)
+    let config = load_config_from_path("src/workspace/test-data/".into())
+        .unwrap()
+        .validate()
+        .unwrap();
+
+    Workspace::new(config.workspace_file, config.project_files)
 }

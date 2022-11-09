@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use camino::Utf8Path;
 use thiserror::Error;
 
 pub type Commit = String;
@@ -15,9 +16,11 @@ pub enum GitError {
     #[error("Cannot find merge base with branch {0}: {1}")]
     MergeBase(String, String), // base branch, error
     #[error("Finding changed files failed: {0}")]
-    Diff(String), // error
+    Diff(String),
     #[error("Error finding the repository root: {0}")]
-    CouldntFindRoot(String), // error
+    CouldntFindRoot(String),
+    #[error("Unknown error: {0}")]
+    Unknown(String),
 }
 
 pub fn repo_root() -> Result<PathBuf, GitError> {
@@ -34,6 +37,22 @@ pub fn have_files_changed(since: String, path: camino::Utf8PathBuf) -> Result<bo
     let paths = real_impl().diff(Mode::Main(since), vec![path.to_string()])?;
 
     Ok(!paths.is_empty())
+}
+
+pub fn sparse_checkout_init() -> Result<(), GitError> {
+    real_impl()
+        .execute(["git", "sparse-checkout", "init", "--cone"])
+        .map_err(GitError::Unknown)?;
+
+    Ok(())
+}
+
+pub fn sparse_checkout_add(path: &Utf8Path) -> Result<(), GitError> {
+    real_impl()
+        .execute(["git", "sparse-checkout", "add", path.as_str()])
+        .map_err(GitError::Unknown)?;
+
+    Ok(())
 }
 
 fn real_impl() -> GitImpl<impl FnMut(Command) -> Result<String, String>> {
@@ -124,7 +143,14 @@ where
         &mut self,
         command: impl IntoIterator<Item = &'a str>,
     ) -> Result<String, String> {
-        (self.executor)(command.into_iter().map(|p| p.to_string()).collect())
+        let args = command
+            .into_iter()
+            .map(|p| p.to_string())
+            .collect::<Vec<_>>();
+
+        tracing::debug!(command = %args.join(" "), "Running git");
+
+        (self.executor)(args)
     }
 }
 

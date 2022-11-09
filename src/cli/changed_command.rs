@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use tabled::{Table, Tabled};
 
-use crate::{config::NormalisedPath, git, workspace::Workspace};
+use crate::{config::ValidPath, git, workspace::Workspace};
 
 #[derive(clap::Parser)]
 pub struct ChangedOpts {
@@ -85,7 +85,7 @@ pub fn run(workspace: Workspace, opts: ChangedOpts) -> miette::Result<()> {
 #[derive(serde::Serialize, Tabled)]
 pub struct Output {
     name: String,
-    path: NormalisedPath,
+    path: ValidPath,
     // TODO: Might be good to include the reason it was included in here as well.
 }
 
