@@ -45,9 +45,11 @@ pub fn run(workspace: Workspace, opts: ChangedOpts) -> miette::Result<()> {
         })
         .collect::<HashSet<_>>();
 
+    let graph = workspace.graph();
+
     let projects_affected = projects_changed
         .into_iter()
-        .flat_map(|p| workspace.graph.walk_project_dependents(p.project_ref()))
+        .flat_map(|p| graph.walk_project_dependents(p.project_ref()))
         .collect::<HashSet<_>>();
 
     // TODO: Probably topsort the output.

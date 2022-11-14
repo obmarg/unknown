@@ -1,5 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
+use once_cell::sync::OnceCell;
+
 use crate::config::{self, ValidPath, WorkspaceRoot};
 
 use self::graph::WorkspaceGraph;
@@ -14,8 +16,8 @@ use globset::Glob;
 
 pub struct Workspace {
     pub info: WorkspaceInfo,
+    graph_: OnceCell<WorkspaceGraph>,
     project_map: HashMap<ProjectRef, ProjectInfo>,
-    pub graph: graph::WorkspaceGraph,
 }
 
 impl std::fmt::Debug for Workspace {
@@ -109,10 +111,15 @@ impl Workspace {
         }
 
         Workspace {
-            graph: WorkspaceGraph::new(&workspace_info, &project_map),
+            graph_: OnceCell::new(),
             info: workspace_info,
             project_map,
         }
+    }
+
+    pub fn graph(&self) -> &WorkspaceGraph {
+        self.graph_
+            .get_or_init(|| WorkspaceGraph::new(&self.info, &self.project_map))
     }
 
     pub fn projects(&self) -> impl Iterator<Item = &ProjectInfo> {

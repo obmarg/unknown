@@ -203,15 +203,15 @@ impl WorkspaceGraph {
 
 impl TaskRef {
     pub fn direct_dependencies(&self, workspace: &super::Workspace) -> HashSet<TaskRef> {
-        let workspace = &workspace.graph;
+        let graph = workspace.graph();
 
-        let filtered_graph = EdgeFiltered::from_fn(&workspace.graph, |edge| {
+        let filtered_graph = EdgeFiltered::from_fn(&graph.graph, |edge| {
             matches!(edge.weight(), WorkspaceEdge::TaskDependsOn)
         });
 
         filtered_graph
-            .neighbors(workspace.task_indices[self])
-            .filter_map(|index| workspace.lookup_task(index))
+            .neighbors(graph.task_indices[self])
+            .filter_map(|index| graph.lookup_task(index))
             .collect()
     }
 }

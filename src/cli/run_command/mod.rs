@@ -223,12 +223,13 @@ fn find_tasks<'a>(
     target_projects: &HashSet<&'a ProjectInfo>,
     task_list: Vec<String>,
 ) -> Vec<TaskAndDeps> {
+    let graph = workspace.graph();
     let mut tasks = HashSet::new();
     for project in target_projects {
         for task_name in &task_list {
             if let Some(task) = project.lookup_task(task_name) {
                 tasks.insert(task.task_ref());
-                let task_deps = workspace.graph.walk_task_dependencies(task.task_ref());
+                let task_deps = graph.walk_task_dependencies(task.task_ref());
                 tracing::debug!(
                     "{} depends on {}",
                     task.task_ref(),
@@ -242,11 +243,9 @@ fn find_tasks<'a>(
             }
         }
     }
-
     // Now we return them in topsorted order with their set of
     // direct deps.
-    workspace
-        .graph
+    graph
         .topsort_tasks()
         .into_iter()
         .filter(|task_ref| tasks.contains(task_ref))
