@@ -131,7 +131,7 @@ fn load_project_file(
 ) -> Result<UnvalidatedProjectFile, miette::Report> {
     let source_text = std::fs::read_to_string(&project_file_path.full_path())
         .expect("couldn't read project file");
-    let mut config = parse_project_file(project_file_path.as_subpath(), &source_text)
+    let config = parse_project_file(project_file_path.as_subpath(), &source_text)
         .map_err(miette::Report::new)?;
 
     let project_root = project_file_path
@@ -156,7 +156,7 @@ pub enum TaskImportError {
     ParsingError(super::ParsingError),
 }
 
-pub(super) fn import_tasks(project_file: &mut ValidProjectFile) -> Result<(), TaskImportError> {
+pub(super) fn import_tasks(project_file: &mut ValidProjectFile) -> Result<(), miette::Report> {
     let mut imports = std::mem::take(&mut project_file.config.tasks.imports);
 
     while let Some(import) = imports.pop() {
@@ -164,21 +164,15 @@ pub(super) fn import_tasks(project_file: &mut ValidProjectFile) -> Result<(), Ta
             .into_normalised()
             .expect("paths to be normalised before calling import_task");
 
-        let mut config = parse_task_file(
-            task_path.as_subpath(),
-            &std::fs::read_to_string(task_path.full_path())
-                .map_err(|e| TaskImportError::IoError(task_path.as_subpath().to_owned(), e))?,
-        )
-        .map_err(TaskImportError::ParsingError)?;
+        let task_file_contents = std::fs::read_to_string(task_path.full_path())
+            .map_err(|e| TaskImportError::IoError(task_path.as_subpath().to_owned(), e))?;
+
+        let mut config = parse_task_file(task_path.as_subpath(), &task_file_contents)
+            .map_err(TaskImportError::ParsingError)?;
 
         config
             .validate_and_normalise(&task_path.parent().unwrap())
-            .map_err(|e| {
-                // Actually not sure how to handle this...
-                // Ideally want nice miette errors highlighting the line, but that's
-                // going to be a tiny bit of work...
-                todo!("error handling")
-            })?;
+            .map_err(|e| miette::Report::new(e).with_source_code(task_file_contents))?;
 
         imports.extend(config.imports.into_iter());
 

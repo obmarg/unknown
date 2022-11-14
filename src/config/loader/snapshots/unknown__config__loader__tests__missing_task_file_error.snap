@@ -3,6 +3,9 @@ source: src/config/loader/tests.rs
 expression: "render_miette(err, &test_files)"
 ---
 
+  × Encountered some errors when validating config files
+
+Error: 
   × Path doesn't seem to exist: //project/missing.nabs
    ╭─[project/project.kdl:3:1]
  3 │ tasks {

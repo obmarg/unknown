@@ -180,7 +180,17 @@ impl From<WorkspaceRoot> for ValidPath {
 
 impl WorkspaceRoot {
     pub fn new(path: impl Into<Utf8PathBuf>) -> Self {
-        WorkspaceRoot(path.into())
+        let mut path_buf = path.into();
+        if !path_buf.ends_with("/") {
+            // Make sure we end with `/` so the subpaths on a RelativePath end up relative
+            // and not absolute
+            path_buf = {
+                let mut string = path_buf.into_string();
+                string.push('/');
+                Utf8PathBuf::from(string)
+            }
+        }
+        WorkspaceRoot(path_buf)
     }
 
     pub fn normalise_absolute(&self, path: impl Into<Utf8PathBuf>) -> Result<ValidPath, PathError> {
@@ -237,9 +247,9 @@ impl RelativePath {
     ) -> Result<RelativePath, PathError> {
         let absolute = base.join(relative_path);
         let normalised = normalize_path(&absolute);
-        let subpath = absolute
+        let subpath = normalised
             .strip_prefix(&workspace_root.0)
-            .map_err(|_| PathError::PathNotInWorkspace(absolute.clone()))?
+            .map_err(|_| PathError::PathNotInWorkspace(normalised.clone()))?
             .to_owned();
 
         Ok(RelativePath {
@@ -360,6 +370,7 @@ pub enum PathError {
     #[error("An unexpected error occurred when trying to read a file: {0}")]
     OtherIo(std::io::Error),
     #[error("The provided path was not in the workspace: {0}")]
+    #[help("all paths need to be descended from the directory containing your workspace.kdl")]
     PathNotInWorkspace(Utf8PathBuf),
 }
 
@@ -403,6 +414,12 @@ fn normalize_path(path: &Utf8Path) -> Utf8PathBuf {
 
 #[cfg(test)]
 mod tests {
+    use assert_matches::assert_matches;
+    use rstest::rstest;
+    use similar_asserts::assert_eq;
+
+    use crate::test_files::TestFiles;
+
     use super::*;
 
     #[derive(knuffel::Decode, Debug)]
@@ -468,5 +485,188 @@ mod tests {
             ],
         }
         "###);
+    }
+
+    #[test]
+    fn test_workspace_root_new() {
+        assert_eq!(
+            WorkspaceRoot::new("/workspace").0,
+            Utf8PathBuf::from("/workspace/")
+        );
+        assert_eq!(
+            WorkspaceRoot::new("/workspace/").0,
+            Utf8PathBuf::from("/workspace/")
+        );
+    }
+
+    #[rstest]
+    #[case("hello.json", "/workspace/hello.json", "hello.json")]
+    #[case("/hello.json", "/workspace/hello.json", "hello.json")]
+    #[case(
+        "/projects/whatever/hello.json",
+        "/workspace/projects/whatever/hello.json",
+        "projects/whatever/hello.json"
+    )]
+    fn test_workspace_root_subpath_happy(
+        #[case] input: &str,
+        #[case] expected_absolute: &str,
+        #[case] expected_subpath: &str,
+    ) {
+        let workspace_root = WorkspaceRoot::new("/workspace");
+        let relative = workspace_root.subpath(input).unwrap();
+        assert_eq!(relative.to_absolute(), Utf8PathBuf::from(expected_absolute));
+        assert_eq!(relative.subpath(), expected_subpath);
+    }
+
+    #[rstest]
+    #[case("/projects/../../hello.json", "/hello.json")]
+    #[case("/projects/../../../hello.json", "/hello.json")]
+    #[case("/projects/../../blah/../hello.json", "/hello.json")]
+    fn test_workspace_root_subpath_doesnt_let_you_escape_workspace(
+        #[case] input: &str,
+        #[case] expected_normalised: &str,
+    ) {
+        let workspace_root = WorkspaceRoot::new("/workspace");
+        assert_matches!(
+            workspace_root.subpath(input),
+            Err(PathError::PathNotInWorkspace(path)) => {
+                assert_eq!(path, Utf8PathBuf::from(expected_normalised));
+            }
+        );
+    }
+
+    #[rstest]
+    #[case("/projects/a-service", "hello.json", "projects/a-service/hello.json")]
+    #[case("/projects/a-service", "../hello.json", "projects/hello.json")]
+    #[case("/projects/a-service", "../../hello.json", "hello.json")]
+    #[case("/projects/a-service", "/hello.json", "hello.json")]
+    fn test_joining_relative_paths_happy(
+        #[case] starting_path: &str,
+        #[case] join_path: &str,
+        #[case] expected_subpath: &str,
+    ) {
+        let workspace_root = WorkspaceRoot::new("/workspace/");
+        let starting_path = workspace_root.subpath(starting_path).unwrap();
+        assert_eq!(
+            starting_path.join(join_path).unwrap().subpath(),
+            Utf8PathBuf::from(expected_subpath)
+        );
+    }
+
+    #[rstest]
+    #[case("/projects/a-service", "../../../hello.json", "/hello.json")]
+    #[case("/", "../hello.json", "/hello.json")]
+    #[case("/", "/../hello.json", "/hello.json")]
+    fn test_joining_relative_paths_doesnt_let_you_escape_workspace(
+        #[case] starting_path: &str,
+        #[case] join_path: &str,
+        #[case] expected_normalised: &str,
+    ) {
+        let workspace_root = WorkspaceRoot::new("/workspace");
+        let starting_path = workspace_root.subpath(starting_path).unwrap();
+        assert_matches!(
+            starting_path.join(join_path),
+            Err(PathError::PathNotInWorkspace(path)) => {
+                assert_eq!(path, Utf8PathBuf::from(expected_normalised));
+            }
+        );
+    }
+
+    #[rstest]
+    #[case("/projects/a-service", "hello.json", "projects/a-service/hello.json")]
+    #[case("/projects/a-service", "../hello.json", "projects/hello.json")]
+    #[case("/projects/a-service", "../../hello.json", "hello.json")]
+    #[case("/projects/a-service", "/hello.json", "hello.json")]
+    fn test_validate_relative_path_happy(
+        #[case] starting_path: &str,
+        #[case] join_path: &str,
+        #[case] expected_subpath: &str,
+    ) {
+        let test_files = TestFiles::new()
+            .with_file("hello.json", "")
+            .with_file("projects/hello.json", "")
+            .with_file("projects/a-service/hello.json", "");
+
+        let starting_path = test_files.root().subpath(starting_path).unwrap();
+
+        assert_eq!(
+            starting_path
+                .join(join_path)
+                .unwrap()
+                .validate()
+                .unwrap()
+                .as_subpath(),
+            &Utf8PathBuf::from(expected_subpath)
+        );
+    }
+
+    #[rstest]
+    #[case(
+        "/projects/a-service",
+        "hello.json",
+        "/workspace/projects/a-service/hello.json"
+    )]
+    #[case(
+        "/projects/a-service",
+        "../hello.json",
+        "/workspace/projects/hello.json"
+    )]
+    #[case("/projects/a-service", "../../hello.json", "/workspace/hello.json")]
+    #[case("/projects/a-service", "/hello.json", "/workspace/hello.json")]
+    fn test_validate_relative_path_fails_if_file_doesnt_exist(
+        #[case] starting_path: &str,
+        #[case] join_path: &str,
+        #[case] path_expected_in_error: &str,
+    ) {
+        let workspace_root = WorkspaceRoot::new("/workspace");
+
+        let starting_path = workspace_root.subpath(starting_path).unwrap();
+
+        assert_matches!(
+            starting_path
+                .join(join_path)
+                .unwrap()
+                .validate(),
+            Err(PathError::FileNotFound(path)) => {
+                assert_eq!(path, Utf8PathBuf::from(path_expected_in_error))
+            }
+        );
+    }
+
+    #[test]
+    fn test_validate_relative_path_doesnt_let_you_escape_via_symlinks() {
+        let test_files = TestFiles::new()
+            .with_symlink("sh", "/bin/sh")
+            .with_symlink("projects/whatever", "/bin");
+
+        let starting_path = test_files.root().subpath("sh").unwrap();
+
+        assert_matches!(
+            starting_path.validate(),
+            Err(PathError::PathNotInWorkspace(path)) => {
+                assert_eq!(path, Utf8PathBuf::from("/bin/sh"))
+            }
+        );
+
+        let starting_path = test_files.root().subpath("projects/whatever/sh").unwrap();
+
+        assert_matches!(
+            starting_path.validate(),
+            Err(PathError::PathNotInWorkspace(path)) => {
+                assert_eq!(path, Utf8PathBuf::from("/bin/sh"))
+            }
+        );
+    }
+
+    #[test]
+    fn test_normalize_path() {
+        assert_eq!(
+            normalize_path(&Utf8PathBuf::from("/workspace/projects/../../hello.json")),
+            Utf8PathBuf::from("/hello.json"),
+        );
+        assert_eq!(
+            normalize_path(&Utf8PathBuf::from("/hello.json")),
+            Utf8PathBuf::from("/hello.json"),
+        );
     }
 }

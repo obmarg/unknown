@@ -1,6 +1,5 @@
 use std::collections::HashSet;
 
-use camino::Utf8PathBuf;
 use clap::Parser;
 
 use crate::{config::load_project_files, git, workspace::Workspace};

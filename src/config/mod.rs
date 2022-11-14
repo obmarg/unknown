@@ -27,7 +27,7 @@ pub struct UnvalidatedConfig {
 }
 
 #[derive(Debug, thiserror::Error, miette::Diagnostic)]
-#[error("oops")]
+#[error("Encountered some errors when validating config files")]
 struct ConfigValidationError {
     #[related]
     errors: Vec<miette::Report>,
@@ -59,6 +59,7 @@ impl UnvalidatedConfig {
     }
 }
 
+#[derive(Debug)]
 pub struct ValidConfig {
     pub workspace_file: WorkspaceFile,
     pub project_files: Vec<ValidProjectFile>,
@@ -108,7 +109,7 @@ pub struct ValidProjectFile {
 
 impl ValidProjectFile {
     pub fn import_tasks(&mut self) -> Result<(), miette::Report> {
-        loader::import_tasks(self).map_err(miette::Report::new)
+        loader::import_tasks(self)
     }
 }
 

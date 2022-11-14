@@ -1,6 +1,6 @@
 ---
 source: src/workspace/tests.rs
-expression: "Workspace::new(workspace, projects)"
+expression: "Workspace::new(config.workspace_file, config.project_files)"
 ---
 Workspace {
     info: WorkspaceInfo {
@@ -22,14 +22,14 @@ Workspace {
             },
         ],
         root_path: WorkspaceRoot(
-            "/Users/graeme/src/unknown/src/workspace/test-data",
+            "/Users/graeme/src/unknown/src/workspace/test-data/",
         ),
     },
     project_map: {
         ProjectRef(
-            NormalisedPath {
+            ValidPath {
                 workspace_root: WorkspaceRoot(
-                    "/Users/graeme/src/unknown/src/workspace/test-data",
+                    "/Users/graeme/src/unknown/src/workspace/test-data/",
                 ),
                 subpath: "projects/a-lib",
             },
@@ -39,9 +39,9 @@ Workspace {
             tasks: [
                 TaskInfo {
                     project: ProjectRef(
-                        NormalisedPath {
+                        ValidPath {
                             workspace_root: WorkspaceRoot(
-                                "/Users/graeme/src/unknown/src/workspace/test-data",
+                                "/Users/graeme/src/unknown/src/workspace/test-data/",
                             ),
                             subpath: "projects/a-lib",
                         },
@@ -60,9 +60,9 @@ Workspace {
                 },
                 TaskInfo {
                     project: ProjectRef(
-                        NormalisedPath {
+                        ValidPath {
                             workspace_root: WorkspaceRoot(
-                                "/Users/graeme/src/unknown/src/workspace/test-data",
+                                "/Users/graeme/src/unknown/src/workspace/test-data/",
                             ),
                             subpath: "projects/a-lib",
                         },
@@ -80,17 +80,17 @@ Workspace {
                     },
                 },
             ],
-            root: NormalisedPath {
+            root: ValidPath {
                 workspace_root: WorkspaceRoot(
-                    "/Users/graeme/src/unknown/src/workspace/test-data",
+                    "/Users/graeme/src/unknown/src/workspace/test-data/",
                 ),
                 subpath: "projects/a-lib",
             },
         },
         ProjectRef(
-            NormalisedPath {
+            ValidPath {
                 workspace_root: WorkspaceRoot(
-                    "/Users/graeme/src/unknown/src/workspace/test-data",
+                    "/Users/graeme/src/unknown/src/workspace/test-data/",
                 ),
                 subpath: "projects/a-service",
             },
@@ -98,9 +98,9 @@ Workspace {
             name: "a-service",
             dependencies: [
                 ProjectRef(
-                    NormalisedPath {
+                    ValidPath {
                         workspace_root: WorkspaceRoot(
-                            "/Users/graeme/src/unknown/src/workspace/test-data",
+                            "/Users/graeme/src/unknown/src/workspace/test-data/",
                         ),
                         subpath: "projects/a-lib",
                     },
@@ -109,9 +109,9 @@ Workspace {
             tasks: [
                 TaskInfo {
                     project: ProjectRef(
-                        NormalisedPath {
+                        ValidPath {
                             workspace_root: WorkspaceRoot(
-                                "/Users/graeme/src/unknown/src/workspace/test-data",
+                                "/Users/graeme/src/unknown/src/workspace/test-data/",
                             ),
                             subpath: "projects/a-service",
                         },
@@ -138,9 +138,9 @@ Workspace {
                 },
                 TaskInfo {
                     project: ProjectRef(
-                        NormalisedPath {
+                        ValidPath {
                             workspace_root: WorkspaceRoot(
-                                "/Users/graeme/src/unknown/src/workspace/test-data",
+                                "/Users/graeme/src/unknown/src/workspace/test-data/",
                             ),
                             subpath: "projects/a-service",
                         },
@@ -158,9 +158,9 @@ Workspace {
                     },
                 },
             ],
-            root: NormalisedPath {
+            root: ValidPath {
                 workspace_root: WorkspaceRoot(
-                    "/Users/graeme/src/unknown/src/workspace/test-data",
+                    "/Users/graeme/src/unknown/src/workspace/test-data/",
                 ),
                 subpath: "projects/a-service",
             },

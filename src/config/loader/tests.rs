@@ -6,7 +6,10 @@ use super::*;
 
 #[test]
 fn test_load_config_from_cwd() {
-    insta::assert_debug_snapshot!(load_config_from_path("sample-monorepo/".into()));
+    insta::assert_debug_snapshot!(load_config_from_path("sample-monorepo/".into())
+        .unwrap()
+        .validate()
+        .unwrap());
 }
 
 #[test]
@@ -54,7 +57,10 @@ fn test_missing_task_file_error() {
         "#,
         );
 
-    let err = load_config_from_path(test_files.root().into()).unwrap_err();
+    let err = load_config_from_path(test_files.root().into())
+        .unwrap()
+        .validate()
+        .unwrap_err();
 
     insta::assert_display_snapshot!(render_miette(err, &test_files));
 }
@@ -81,8 +87,10 @@ fn test_dependency_from_out_of_workspace() {
             "#,
         );
 
-    let err =
-        load_config_from_path(Utf8PathBuf::from(test_files.root()).join("workspace")).unwrap_err();
+    let err = load_config_from_path(Utf8PathBuf::from(test_files.root()).join("workspace"))
+        .unwrap()
+        .validate()
+        .unwrap_err();
 
     insta::assert_display_snapshot!(render_miette(err, &test_files));
 }
@@ -108,8 +116,39 @@ fn test_wont_import_tasks_from_out_of_workspace() {
                 }
             "#,
         );
-    let err =
-        load_config_from_path(Utf8PathBuf::from(test_files.root()).join("workspace")).unwrap_err();
+    let err = load_config_from_path(Utf8PathBuf::from(test_files.root()).join("workspace"))
+        .unwrap()
+        .validate()
+        .unwrap_err();
+
+    insta::assert_display_snapshot!(render_miette(err, &test_files));
+}
+
+#[test]
+fn test_invalid_task_path_inside_nested_task_file() {
+    let test_files = TestFiles::new()
+        .with_file("task.kdl", r#"import "other.kdl"#)
+        .with_file(
+            "workspace/workspace.kdl",
+            r#"
+                name "test"
+
+                project_path "*"
+            "#,
+        )
+        .with_file(
+            "workspace/project/project.kdl",
+            r#"
+                project "my_project"
+                tasks {
+                    import "../../task.kdl"
+                }
+            "#,
+        );
+    let err = load_config_from_path(Utf8PathBuf::from(test_files.root()).join("workspace"))
+        .unwrap()
+        .validate()
+        .unwrap_err();
 
     insta::assert_display_snapshot!(render_miette(err, &test_files));
 }

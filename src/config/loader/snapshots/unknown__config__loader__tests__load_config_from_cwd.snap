@@ -1,141 +1,139 @@
 ---
 source: src/config/loader/tests.rs
-expression: "load_config_from_path(\"sample-monorepo/\".into())"
+expression: "load_config_from_path(\"sample-monorepo/\".into()).unwrap().validate().unwrap()"
 ---
-Ok(
-    (
-        WorkspaceFile {
-            workspace_root: WorkspaceRoot(
-                "/Users/graeme/src/unknown/sample-monorepo",
-            ),
-            config: WorkspaceDefinition {
-                name: "my-workspace",
-                project_paths: [
-                    Glob(
-                        Glob {
-                            glob: "**",
-                            re: "(?-u)^.*$",
-                            opts: GlobOptions {
-                                case_insensitive: false,
-                                literal_separator: false,
-                                backslash_escape: true,
-                            },
-                            tokens: Tokens(
-                                [
-                                    RecursivePrefix,
-                                ],
-                            ),
+ValidConfig {
+    workspace_file: WorkspaceFile {
+        workspace_root: WorkspaceRoot(
+            "/Users/graeme/src/unknown/sample-monorepo/",
+        ),
+        config: WorkspaceDefinition {
+            name: "my-workspace",
+            project_paths: [
+                Glob(
+                    Glob {
+                        glob: "**",
+                        re: "(?-u)^.*$",
+                        opts: GlobOptions {
+                            case_insensitive: false,
+                            literal_separator: false,
+                            backslash_escape: true,
                         },
-                    ),
-                ],
-            },
+                        tokens: Tokens(
+                            [
+                                RecursivePrefix,
+                            ],
+                        ),
+                    },
+                ),
+            ],
         },
-        [
-            ProjectFile {
-                project_root: NormalisedPath {
-                    workspace_root: WorkspaceRoot(
-                        "/Users/graeme/src/unknown/sample-monorepo",
-                    ),
-                    subpath: "projects/a-service",
-                },
-                config: ProjectDefinition {
-                    project: "a-service",
-                    dependencies: DependencyBlock {
-                        projects: [
-                            ConfigPath {
-                                span: SourceSpan {
-                                    offset: SourceOffset(
-                                        96,
-                                    ),
-                                    length: SourceOffset(
-                                        10,
-                                    ),
-                                },
-                                inner: Normalised(
-                                    NormalisedPath {
-                                        workspace_root: WorkspaceRoot(
-                                            "/Users/graeme/src/unknown/sample-monorepo",
-                                        ),
-                                        subpath: "projects/a-lib",
-                                    },
+    },
+    project_files: [
+        ValidProjectFile {
+            project_root: ValidPath {
+                workspace_root: WorkspaceRoot(
+                    "/Users/graeme/src/unknown/sample-monorepo/",
+                ),
+                subpath: "projects/a-service",
+            },
+            config: ProjectDefinition {
+                project: "a-service",
+                dependencies: DependencyBlock {
+                    projects: [
+                        ConfigPath {
+                            span: SourceSpan {
+                                offset: SourceOffset(
+                                    96,
+                                ),
+                                length: SourceOffset(
+                                    10,
                                 ),
                             },
-                        ],
-                    },
-                    tasks: TaskBlock {
-                        imports: [],
-                        tasks: [
-                            TaskDefinition {
-                                name: "build",
-                                commands: [
-                                    "echo \"build-a-service\"",
-                                ],
-                                dependencies: [
-                                    TaskDependency {
-                                        task: "build",
-                                        for_project_deps: Some(
-                                            true,
-                                        ),
-                                        include_this_package: None,
-                                    },
-                                ],
-                                input_blocks: [],
-                            },
-                            TaskDefinition {
-                                name: "bye",
-                                commands: [
-                                    "echo \"bye\"",
-                                ],
-                                dependencies: [],
-                                input_blocks: [],
-                            },
-                        ],
-                    },
+                            inner: Normalised(
+                                ValidPath {
+                                    workspace_root: WorkspaceRoot(
+                                        "/Users/graeme/src/unknown/sample-monorepo/",
+                                    ),
+                                    subpath: "projects/a-lib",
+                                },
+                            ),
+                        },
+                    ],
+                },
+                tasks: TaskBlock {
+                    imports: [],
+                    tasks: [
+                        TaskDefinition {
+                            name: "build",
+                            commands: [
+                                "echo \"build-a-service\"",
+                            ],
+                            dependencies: [
+                                TaskDependency {
+                                    task: "build",
+                                    for_project_deps: Some(
+                                        true,
+                                    ),
+                                    include_this_package: None,
+                                },
+                            ],
+                            input_blocks: [],
+                        },
+                        TaskDefinition {
+                            name: "bye",
+                            commands: [
+                                "echo \"bye\"",
+                            ],
+                            dependencies: [],
+                            input_blocks: [],
+                        },
+                    ],
                 },
             },
-            ProjectFile {
-                project_root: NormalisedPath {
-                    workspace_root: WorkspaceRoot(
-                        "/Users/graeme/src/unknown/sample-monorepo",
-                    ),
-                    subpath: "projects/a-lib",
+        },
+        ValidProjectFile {
+            project_root: ValidPath {
+                workspace_root: WorkspaceRoot(
+                    "/Users/graeme/src/unknown/sample-monorepo/",
+                ),
+                subpath: "projects/a-lib",
+            },
+            config: ProjectDefinition {
+                project: "a-lib",
+                dependencies: DependencyBlock {
+                    projects: [],
                 },
-                config: ProjectDefinition {
-                    project: "a-lib",
-                    dependencies: DependencyBlock {
-                        projects: [],
-                    },
-                    tasks: TaskBlock {
-                        imports: [],
-                        tasks: [
-                            TaskDefinition {
-                                name: "build",
-                                commands: [
-                                    "echo \"build-a-lib\"",
-                                ],
-                                dependencies: [],
-                                input_blocks: [],
-                            },
-                            TaskDefinition {
-                                name: "hello",
-                                commands: [
-                                    "echo \"hello\"",
-                                ],
-                                dependencies: [],
-                                input_blocks: [],
-                            },
-                            TaskDefinition {
-                                name: "hello2",
-                                commands: [
-                                    "echo \"hello\"",
-                                ],
-                                dependencies: [],
-                                input_blocks: [],
-                            },
-                        ],
-                    },
+                tasks: TaskBlock {
+                    imports: [],
+                    tasks: [
+                        TaskDefinition {
+                            name: "build",
+                            commands: [
+                                "echo \"build-a-lib\"",
+                            ],
+                            dependencies: [],
+                            input_blocks: [],
+                        },
+                        TaskDefinition {
+                            name: "hello",
+                            commands: [
+                                "echo \"hello\"",
+                            ],
+                            dependencies: [],
+                            input_blocks: [],
+                        },
+                        TaskDefinition {
+                            name: "hello2",
+                            commands: [
+                                "echo \"hello\"",
+                            ],
+                            dependencies: [],
+                            input_blocks: [],
+                        },
+                    ],
                 },
             },
-        ],
-    ),
-)
+        },
+    ],
+}
