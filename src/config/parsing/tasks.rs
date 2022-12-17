@@ -180,13 +180,13 @@ mod target_selector {
 
     pub fn parser() -> impl chumsky::Parser<char, ParsedSelector, Error = Simple<char>> {
         let is_package_char = |c: &char| c.is_alphabetic() || *c == '_' || *c == '-';
-        let is_path_char = |c: &char| true;
+        let is_path_char = |_: &char| true;
 
         let package_name = filter(is_package_char)
             .map(Some)
             .chain::<char, Vec<_>, _>(filter(is_package_char).repeated())
             .collect::<String>()
-            .map(|name| ParsedAnchor::ProjectByName(name));
+            .map(ParsedAnchor::ProjectByName);
 
         let package_path = filter(|c| *c == '/')
             .map(Some)
@@ -196,7 +196,7 @@ mod target_selector {
             .try_map(|val: Result<Utf8PathBuf, _>, span| {
                 val.map_err(|e| Simple::custom(span, format!("Couldn't parse a path: {e}")))
             })
-            .map(|name| ParsedAnchor::ProjectByPath(name));
+            .map(ParsedAnchor::ProjectByPath);
 
         let anchor = choice::<_, Simple<char>>((
             text::keyword("self").to(ParsedAnchor::CurrentProject),
@@ -205,13 +205,75 @@ mod target_selector {
         ));
 
         choice::<_, Simple<char>>((
-            text::keyword("...^")
+            just(['.', '.', '.', '^'])
                 .ignore_then(anchor.clone())
                 .map_with_span(ParsedSelector::JustDependencies),
-            text::keyword("...")
+            just(['.', '.', '.'])
                 .ignore_then(anchor.clone())
                 .map_with_span(ParsedSelector::ProjectWithDependencies),
             anchor.map_with_span(ParsedSelector::Project),
         ))
+    }
+
+    #[cfg(test)]
+    mod tests {
+
+        use assert_matches::assert_matches;
+
+        use super::*;
+
+        #[test]
+        fn parsing_selector() {
+            assert_matches!(
+                parser().parse("self").unwrap(),
+                ParsedSelector::Project(ParsedAnchor::CurrentProject, _)
+            );
+            assert_matches!(
+                parser().parse("...self").unwrap(),
+                ParsedSelector::ProjectWithDependencies(ParsedAnchor::CurrentProject, _)
+            );
+            assert_matches!(
+                parser().parse("...^self").unwrap(),
+                ParsedSelector::JustDependencies(ParsedAnchor::CurrentProject, _)
+            );
+
+            assert_matches!(
+                parser().parse("some-project-name").unwrap(),
+                ParsedSelector::Project(ParsedAnchor::ProjectByName(name), _) => {
+                    assert_eq!(name, "some-project-name");
+                }
+            );
+            assert_matches!(
+                parser().parse("...some-project-name").unwrap(),
+                ParsedSelector::ProjectWithDependencies(ParsedAnchor::ProjectByName(name), _) => {
+                    assert_eq!(name, "some-project-name");
+                }
+            );
+            assert_matches!(
+                parser().parse("...^some-project-name").unwrap(),
+                ParsedSelector::JustDependencies(ParsedAnchor::ProjectByName(name), _) => {
+                    assert_eq!(name, "some-project-name");
+                }
+            );
+
+            assert_matches!(
+                parser().parse("/lib/project").unwrap(),
+                ParsedSelector::Project(ParsedAnchor::ProjectByPath(name), _) => {
+                    assert_eq!(name, "/lib/project");
+                }
+            );
+            assert_matches!(
+                parser().parse(".../lib/project").unwrap(),
+                ParsedSelector::ProjectWithDependencies(ParsedAnchor::ProjectByPath(name), _) => {
+                    assert_eq!(name, "/lib/project");
+                }
+            );
+            assert_matches!(
+                parser().parse("...^/lib/project").unwrap(),
+                ParsedSelector::JustDependencies(ParsedAnchor::ProjectByPath(name), _) => {
+                    assert_eq!(name, "/lib/project");
+                }
+            );
+        }
     }
 }
