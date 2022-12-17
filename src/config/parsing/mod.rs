@@ -1,6 +1,14 @@
 use camino::{Utf8Path, Utf8PathBuf};
 
-use super::{project::ProjectDefinition, tasks::*, workspace::WorkspaceDefinition};
+mod diagnostics;
+mod project;
+mod tasks;
+mod validation;
+mod workspace;
+
+pub(super) use self::{project::ProjectDefinition, tasks::*, workspace::WorkspaceDefinition};
+
+pub use validation::{SourceCode, Validator};
 
 #[derive(Debug, thiserror::Error)]
 #[error("Error parsing {1}")]
@@ -44,7 +52,6 @@ pub fn parse_project_file(
     path: &Utf8Path,
     contents: &str,
 ) -> Result<ProjectDefinition, ParsingError> {
-    // TODO: Should probably make sure this is the relative path from workspace...
     let config = knuffel::parse::<ProjectDefinition>(
         path.file_name()
             .expect("project file path to have a filename"),
@@ -52,13 +59,9 @@ pub fn parse_project_file(
     )
     .map_err(|e| ParsingError(e, path.to_owned()))?;
 
-    // TODO: At some point want to validate the data in the file.
-    // e.g. names can't have commas or slashes in them etc.
-
     Ok(config)
 }
 
-// TODO: suspect these functions could be private and just expose the loader...
 pub fn parse_workspace_file(
     path: &Utf8Path,
     contents: &str,
@@ -91,4 +94,36 @@ pub fn parse_task_file(path: &Utf8Path, contents: &str) -> Result<TaskBlock, Par
     // e.g. names can't have commas or slashes in them etc.
 
     Ok(config)
+}
+
+pub trait CollectResults {
+    type Item;
+    type Err;
+
+    fn collect_results(self) -> Result<Vec<Self::Item>, Vec<Self::Err>>;
+}
+
+impl<Iter, Item, Err> CollectResults for Iter
+where
+    Iter: IntoIterator<Item = Result<Item, Err>>,
+{
+    type Item = Item;
+    type Err = Err;
+
+    fn collect_results(self) -> Result<Vec<Self::Item>, Vec<Self::Err>> {
+        let mut items = Vec::new();
+        let mut errs = Vec::new();
+        for res in self {
+            match res {
+                Ok(item) => items.push(item),
+                Err(err) => errs.push(err),
+            }
+        }
+
+        if !errs.is_empty() {
+            return Err(errs);
+        }
+
+        Ok(items)
+    }
 }

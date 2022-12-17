@@ -71,11 +71,7 @@ impl Workspace {
             let project_ref = ProjectRef(project_file.project_root.clone());
 
             let mut dependencies = Vec::new();
-            for path in project_file.config.dependencies.projects {
-                let path = path
-                    .into_normalised()
-                    .expect("the parser to have normalised ConfigPaths");
-
+            for path in project_file.config.dependencies {
                 if !project_paths.contains(&path) {
                     panic!("Unknown project: {path}");
                 }
@@ -127,7 +123,6 @@ impl Workspace {
     }
 
     pub fn project_at_path(&self, path: impl AsRef<Utf8Path>) -> Option<&ProjectInfo> {
-        // TODO: Ok, so this one definitely wants to be
         let project_ref = ProjectRef(self.info.root_path.normalise_absolute(path.as_ref()).ok()?);
         self.project_map.get(&project_ref)
     }

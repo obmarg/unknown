@@ -42,7 +42,7 @@ fn run_checkout(workspace: Workspace, opts: CheckoutOptions) -> miette::Result<(
         let project_files = load_project_files(root_path, &path, &workspace.info.project_paths)?;
         for project in project_files {
             for dep_path in project.unvalidated_dependency_paths() {
-                let relative_path = path.join(&dep_path.clone().into_raw().expect("a raw path"))?;
+                let relative_path = path.join(dep_path.clone().into_inner())?;
                 if !loaded_paths.contains(&relative_path) {
                     paths.push(relative_path);
                 }

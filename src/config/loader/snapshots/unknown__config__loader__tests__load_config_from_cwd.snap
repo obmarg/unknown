@@ -39,28 +39,14 @@ ValidConfig {
             },
             config: ProjectDefinition {
                 project: "a-service",
-                dependencies: DependencyBlock {
-                    projects: [
-                        ConfigPath {
-                            span: SourceSpan {
-                                offset: SourceOffset(
-                                    96,
-                                ),
-                                length: SourceOffset(
-                                    10,
-                                ),
-                            },
-                            inner: Normalised(
-                                ValidPath {
-                                    workspace_root: WorkspaceRoot(
-                                        "/Users/graeme/src/unknown/sample-monorepo/",
-                                    ),
-                                    subpath: "projects/a-lib",
-                                },
-                            ),
-                        },
-                    ],
-                },
+                dependencies: [
+                    ValidPath {
+                        workspace_root: WorkspaceRoot(
+                            "/Users/graeme/src/unknown/sample-monorepo/",
+                        ),
+                        subpath: "projects/a-lib",
+                    },
+                ],
                 tasks: TaskBlock {
                     imports: [],
                     tasks: [
@@ -101,9 +87,7 @@ ValidConfig {
             },
             config: ProjectDefinition {
                 project: "a-lib",
-                dependencies: DependencyBlock {
-                    projects: [],
-                },
+                dependencies: [],
                 tasks: TaskBlock {
                     imports: [],
                     tasks: [

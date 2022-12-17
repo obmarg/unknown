@@ -3,7 +3,7 @@ source: src/config/loader/tests.rs
 expression: "render_miette(err, &test_files)"
 ---
 
-  × Encountered some errors when validating config files
+  × Errors occurred when validating your configuration
 
 Error: 
   × The provided path was not in the workspace: /

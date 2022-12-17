@@ -3,15 +3,16 @@ use globset::{Glob, GlobSetBuilder};
 use ignore::WalkBuilder;
 
 use super::{
-    parsing::{parse_project_file, parse_task_file, parse_workspace_file},
+    parsing::{parse_project_file, parse_task_file, parse_workspace_file, Validator},
     paths::{RelativePath, ValidPath, WorkspaceRoot},
-    UnvalidatedConfig, UnvalidatedProjectFile, ValidProjectFile, WorkspaceFile,
+    UnvalidatedConfig, UnvalidatedProjectFile, UnvalidatedWorkspaceFile, ValidConfig,
+    ValidProjectFile, WorkspaceFile,
 };
 
 #[cfg(test)]
 mod tests;
 
-pub fn load_config_from_path(
+pub fn load_unvalidated_config_from_path(
     current_path: Utf8PathBuf,
 ) -> Result<UnvalidatedConfig, miette::Report> {
     let current_path = current_path
@@ -24,7 +25,7 @@ pub fn load_config_from_path(
         &std::fs::read_to_string(&workspace_path).expect("couldn't read workspace file"),
     )?;
     let workspace_root = WorkspaceRoot::new(workspace_path.parent().unwrap());
-    let workspace_file = WorkspaceFile {
+    let workspace_file = UnvalidatedWorkspaceFile {
         workspace_root: workspace_root.clone(),
         config,
     };
@@ -48,6 +49,21 @@ pub fn load_config_from_path(
         workspace_file,
         project_files,
     })
+}
+
+pub fn load_config_from_path(current_path: Utf8PathBuf) -> Result<ValidConfig, miette::Report> {
+    let unvalidated = load_unvalidated_config_from_path(current_path)?;
+    let mut validator = Validator::new(unvalidated.workspace_root().clone());
+
+    let mut config = validator.validate_config(unvalidated)?;
+
+    for project in &mut config.project_files {
+        import_tasks(project, &mut validator)?
+    }
+
+    validator.ok()?;
+
+    Ok(config)
 }
 
 pub fn load_project_files(
@@ -129,8 +145,8 @@ fn find_workspace_file(mut current_path: Utf8PathBuf) -> Option<Utf8PathBuf> {
 fn load_project_file(
     project_file_path: &ValidPath,
 ) -> Result<UnvalidatedProjectFile, miette::Report> {
-    let source_text = std::fs::read_to_string(&project_file_path.full_path())
-        .expect("couldn't read project file");
+    let source_text =
+        std::fs::read_to_string(project_file_path.full_path()).expect("couldn't read project file");
     let config = parse_project_file(project_file_path.as_subpath(), &source_text)
         .map_err(miette::Report::new)?;
 
@@ -156,27 +172,29 @@ pub enum TaskImportError {
     ParsingError(super::ParsingError),
 }
 
-pub(super) fn import_tasks(project_file: &mut ValidProjectFile) -> Result<(), miette::Report> {
+pub(super) fn import_tasks(
+    project_file: &mut ValidProjectFile,
+    validator: &mut Validator,
+) -> Result<(), miette::Report> {
     let mut imports = std::mem::take(&mut project_file.config.tasks.imports);
 
-    while let Some(import) = imports.pop() {
-        let task_path = import
-            .into_normalised()
-            .expect("paths to be normalised before calling import_task");
-
+    while let Some(task_path) = imports.pop() {
         let task_file_contents = std::fs::read_to_string(task_path.full_path())
             .map_err(|e| TaskImportError::IoError(task_path.as_subpath().to_owned(), e))?;
 
-        let mut config = parse_task_file(task_path.as_subpath(), &task_file_contents)
-            .map_err(TaskImportError::ParsingError)?;
+        let config: super::parsing::TaskBlock =
+            parse_task_file(task_path.as_subpath(), &task_file_contents)
+                .map_err(TaskImportError::ParsingError)?;
 
-        config
-            .validate_and_normalise(&task_path.parent().unwrap())
-            .map_err(|e| miette::Report::new(e).with_source_code(task_file_contents))?;
+        let source_code =
+            super::parsing::SourceCode::new(task_path.as_subpath(), task_file_contents);
 
-        imports.extend(config.imports.into_iter());
+        let config = validator.validate_tasks(config, &task_path.parent().unwrap(), &source_code);
 
-        project_file.config.tasks.tasks.extend(config.tasks);
+        if let Some(config) = config {
+            imports.extend(config.imports.into_iter());
+            project_file.config.tasks.tasks.extend(config.tasks);
+        }
     }
 
     Ok(())
