@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use crate::config::Glob;
+use crate::config::{ConfigSource, Glob};
 
 use super::super::{
     paths::{ConfigPath, ConfigPathValidationError, ValidPath},
@@ -21,12 +21,11 @@ pub struct TaskDefinition {
 
     pub commands: Vec<String>,
 
-    // TODO: ditch this
-    pub dependencies: Vec<TaskDependency>,
-
     pub requires: Vec<TaskRequires>,
 
     pub input_blocks: Vec<InputBlock>,
+
+    pub source: ConfigSource,
 }
 
 #[derive(Debug)]
@@ -56,13 +55,19 @@ pub struct InputBlock {
 
 // TargetSelector maybe?
 #[derive(Clone, Debug)]
-pub enum TargetSelector {
-    Project(Spanned<TargetAnchor>),
-    ProjectWithDependencies(Spanned<TargetAnchor>),
-    JustDependencies(Spanned<TargetAnchor>),
+pub struct TargetSelector {
+    pub anchor: Spanned<TargetAnchor>,
+    pub selection: Selection,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+pub enum Selection {
+    Project,
+    ProjectWithDependencies,
+    JustDependencies,
+}
+
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub enum TargetAnchor {
     CurrentProject,
     ProjectByName(String),

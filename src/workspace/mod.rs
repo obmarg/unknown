@@ -1,8 +1,12 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 
+use miette::SourceSpan;
 use once_cell::sync::OnceCell;
 
-use crate::config::{self, ValidPath, WorkspaceRoot};
+use crate::{
+    config::{self, ConfigSource, TargetAnchor, ValidPath, WorkspaceRoot},
+    diagnostics::{CollectResults, ConfigError, DynDiagnostic},
+};
 
 use self::graph::WorkspaceGraph;
 
@@ -16,8 +20,9 @@ use globset::Glob;
 
 pub struct Workspace {
     pub info: WorkspaceInfo,
-    graph_: OnceCell<WorkspaceGraph>,
+    graph_: WorkspaceGraph,
     project_map: HashMap<ProjectRef, ProjectInfo>,
+    task_map: HashMap<TaskRef, TaskInfo>,
 }
 
 impl std::fmt::Debug for Workspace {
@@ -29,9 +34,15 @@ impl std::fmt::Debug for Workspace {
             .iter()
             .collect::<std::collections::BTreeMap<_, _>>();
 
+        let task_map = self
+            .task_map
+            .iter()
+            .collect::<std::collections::BTreeMap<_, _>>();
+
         f.debug_struct("Workspace")
             .field("info", &self.info)
             .field("project_map", &project_map)
+            .field("task_map", &task_map)
             .finish_non_exhaustive()
     }
 }
@@ -45,10 +56,7 @@ pub struct WorkspaceInfo {
 }
 
 impl Workspace {
-    pub fn new(
-        workspace_file: config::WorkspaceFile,
-        project_files: Vec<config::ValidProjectFile>,
-    ) -> Self {
+    pub fn new(workspace_file: config::WorkspaceFile) -> Self {
         let workspace_info = WorkspaceInfo {
             name: workspace_file.config.name,
             project_paths: workspace_file
@@ -59,13 +67,28 @@ impl Workspace {
                 .collect(),
             root_path: workspace_file.workspace_root,
         };
+        let graph = WorkspaceGraph::new();
 
+        Workspace {
+            graph_: WorkspaceGraph::new(),
+            info: workspace_info,
+            project_map: HashMap::new(),
+            task_map: HashMap::new(),
+        }
+    }
+
+    pub fn add_projects(
+        &mut self,
+        project_files: Vec<config::ValidProjectFile>,
+    ) -> Result<(), ConfigError> {
         let project_paths = project_files
             .iter()
             .map(|project_file| project_file.project_root.clone())
             .collect::<HashSet<_>>();
 
-        let mut project_map = HashMap::with_capacity(project_files.len());
+        self.project_map.reserve(project_files.len());
+
+        let mut tasks_to_process = Vec::new();
 
         for project_file in project_files {
             let project_ref = ProjectRef(project_file.project_root.clone());
@@ -78,44 +101,66 @@ impl Workspace {
                 dependencies.push(ProjectRef(path));
             }
 
-            let mut tasks = Vec::new();
             // TODO: handle task imports
-            for task in &project_file.config.tasks.tasks {
-                tasks.push(TaskInfo {
-                    project_name: project_file.config.project.clone(),
-                    project: project_ref.clone(),
-                    name: task.name.clone(),
-                    commands: task.commands.clone(),
-                    dependencies: task
-                        .dependencies
-                        .iter()
-                        .map(TaskDependency::from_config)
-                        .collect(),
-                    inputs: TaskInputs::from_config(&task.input_blocks),
-                })
+            for task in project_file.config.tasks.tasks {
+                tasks_to_process.push((project_ref.clone(), task));
             }
 
-            project_map.insert(
+            self.project_map.insert(
                 project_ref.clone(),
                 ProjectInfo {
                     name: project_file.config.project.clone(),
                     dependencies,
-                    tasks,
                     root: project_file.project_root,
                 },
             );
         }
 
-        Workspace {
-            graph_: OnceCell::new(),
-            info: workspace_info,
-            project_map,
+        self.graph_.add_projects(&self.project_map);
+
+        let mut errors = Vec::new();
+        for (project_ref, task) in tasks_to_process {
+            let project = &self.project_map[&project_ref];
+            let requires = task
+                .requires
+                .into_iter()
+                .map(|requires| {
+                    resolve_requires(requires, project_ref.lookup(self), self, &task.source)
+                })
+                .collect_results();
+
+            match requires {
+                Ok(requires) => {
+                    self.task_map.insert(
+                        TaskRef(project_ref.clone(), task.name.clone()),
+                        TaskInfo {
+                            project_name: project.name.clone(),
+                            project: project_ref.clone(),
+                            name: task.name.clone(),
+                            commands: task.commands.clone(),
+                            requires: requires.into_iter().flatten().collect(),
+                            inputs: TaskInputs::from_config(&task.input_blocks),
+                        },
+                    );
+                }
+                Err(errs) => errors.extend(
+                    errs.into_iter()
+                        .map(|e| DynDiagnostic::new(e).with_source_code(task.source.clone())),
+                ),
+            }
         }
+
+        if !errors.is_empty() {
+            return Err(ConfigError { errors });
+        }
+
+        self.graph_.register_tasks(&self.task_map);
+
+        Ok(())
     }
 
     pub fn graph(&self) -> &WorkspaceGraph {
-        self.graph_
-            .get_or_init(|| WorkspaceGraph::new(&self.info, &self.project_map))
+        &self.graph_
     }
 
     pub fn projects(&self) -> impl Iterator<Item = &ProjectInfo> {
@@ -125,6 +170,11 @@ impl Workspace {
     pub fn project_at_path(&self, path: impl AsRef<Utf8Path>) -> Option<&ProjectInfo> {
         let project_ref = ProjectRef(self.info.root_path.normalise_absolute(path.as_ref()).ok()?);
         self.project_map.get(&project_ref)
+    }
+
+    pub fn project_by_name(&self, name: impl AsRef<str>) -> Option<&ProjectInfo> {
+        let name = name.as_ref();
+        self.project_map.values().find(|p| p.name == name)
     }
 
     // pub fn lookup_project(&self, name: impl AsRef<str>) -> Option<&ProjectInfo> {
@@ -157,10 +207,9 @@ impl ProjectRef {
 
 impl TaskRef {
     pub fn lookup<'a>(&self, workspace: &'a Workspace) -> &'a TaskInfo {
-        workspace.project_map[&self.0]
-            .tasks
-            .iter()
-            .find(|task| task.name == self.1)
+        workspace
+            .task_map
+            .get(self)
             .expect("a valid TaskRef for the given Workspace")
     }
 }
@@ -169,7 +218,7 @@ impl TaskRef {
 pub struct ProjectInfo {
     pub name: String,
     pub dependencies: Vec<ProjectRef>,
-    pub tasks: Vec<TaskInfo>,
+    // pub tasks: Vec<TaskInfo>,
     pub root: ValidPath,
 }
 
@@ -178,8 +227,19 @@ impl ProjectInfo {
         ProjectRef(self.root.clone())
     }
 
-    pub fn lookup_task(&self, name: &str) -> Option<&TaskInfo> {
-        self.tasks.iter().find(|task| task.name == name)
+    pub fn tasks<'a>(&self, workspace: &'a Workspace) -> Vec<&'a TaskInfo> {
+        workspace
+            .graph()
+            .project_tasks(&self.project_ref())
+            .into_iter()
+            .map(|r| r.lookup(&workspace))
+            .collect()
+    }
+
+    pub fn lookup_task<'a>(&self, name: &str, workspace: &'a Workspace) -> Option<&'a TaskInfo> {
+        self.tasks(workspace)
+            .into_iter()
+            .find(|task| task.name == name)
     }
 }
 
@@ -192,7 +252,7 @@ impl ProjectRef {
     }
 }
 
-#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct TaskRef(ProjectRef, String);
 
 impl TaskRef {
@@ -211,6 +271,10 @@ impl std::fmt::Display for TaskRef {
     }
 }
 
+/// A TaskRef that may or may not exist.
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+pub struct PossibleTaskRef(ProjectRef, String);
+
 // TODO: Think about sticking this in an arc or similar rather than clone
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct TaskInfo {
@@ -218,7 +282,7 @@ pub struct TaskInfo {
     pub project_name: String,
     pub name: String,
     pub commands: Vec<String>,
-    pub dependencies: Vec<TaskDependency>,
+    pub requires: Vec<PossibleTaskRef>,
     pub inputs: TaskInputs,
 }
 
@@ -228,28 +292,81 @@ impl TaskInfo {
     }
 }
 
-#[derive(Clone, Debug, Hash, PartialEq, Eq)]
-pub struct TaskDependency {
-    pub task: TaskDependencySpec,
-    pub target_self: bool,
-    pub target_deps: bool,
+#[derive(thiserror::Error, miette::Diagnostic, Debug)]
+pub enum TaskResolutionError {
+    #[error("Couldn't find a project named {name}")]
+    UnknownProjectByName {
+        name: String,
+        #[label = "Couldn't find this project"]
+        span: SourceSpan,
+
+        #[source_code]
+        source_code: ConfigSource,
+    },
+    #[error("Couldn't find a project at the path {path}")]
+    UnknownProjectByPath {
+        path: ValidPath,
+        #[label = "Couldn't find this project"]
+        span: SourceSpan,
+
+        #[source_code]
+        source_code: ConfigSource,
+    },
+    #[error("Tried to require a task from an unrelated project")]
+    RequiredFromUnrelatedProject {
+        #[label = "This project isn't in the current projects dependency tree"]
+        span: SourceSpan,
+
+        #[source_code]
+        source_code: ConfigSource,
+    },
 }
 
-#[derive(Clone, Debug, Hash, PartialEq, Eq)]
-pub enum TaskDependencySpec {
-    NamedTask(String),
-    // TODO: Implement the TaggedTask support
-    // TaggedTask,
-}
+fn resolve_requires(
+    requires: config::TaskRequires,
+    current_project: &ProjectInfo,
+    workspace: &Workspace,
+    source: &ConfigSource,
+) -> Result<Vec<PossibleTaskRef>, TaskResolutionError> {
+    let anchor = match requires.target.anchor.as_ref() {
+        TargetAnchor::CurrentProject => current_project,
+        TargetAnchor::ProjectByName(name) => workspace.project_by_name(name).ok_or_else(|| {
+            TaskResolutionError::UnknownProjectByName {
+                name: name.to_string(),
+                span: requires.target.anchor.span,
+                source_code: source.clone(),
+            }
+        })?,
+        TargetAnchor::ProjectByPath(path) => workspace
+            .project_at_path(path.full_path())
+            .ok_or_else(|| TaskResolutionError::UnknownProjectByPath {
+                path: path.clone(),
+                span: requires.target.anchor.span,
+                source_code: source.clone(),
+            })?,
+    };
 
-impl TaskDependency {
-    fn from_config(config: &config::TaskDependency) -> Self {
-        TaskDependency {
-            task: TaskDependencySpec::NamedTask(config.task.clone()),
-            target_self: config.include_this_package.unwrap_or(true),
-            target_deps: config.for_project_deps.unwrap_or_default(),
-        }
+    if !current_project.has_dependency(&anchor.project_ref(), workspace) {
+        return Err(TaskResolutionError::RequiredFromUnrelatedProject {
+            span: requires.target.anchor.span,
+            source_code: source.clone(),
+        });
     }
+
+    let projects = match requires.target.selection {
+        config::Selection::Project => BTreeSet::from([current_project.project_ref()]),
+        config::Selection::ProjectWithDependencies => current_project.dependencies(workspace),
+        config::Selection::JustDependencies => {
+            let mut deps = current_project.dependencies::<BTreeSet<_>>(workspace);
+            deps.remove(&current_project.project_ref());
+            deps
+        }
+    };
+
+    Ok(projects
+        .into_iter()
+        .map(|project| PossibleTaskRef(project, requires.task.clone()))
+        .collect())
 }
 
 #[derive(Clone, Debug, Default, Hash, PartialEq, Eq)]

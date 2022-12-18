@@ -1,5 +1,6 @@
 mod cli;
 mod config;
+mod diagnostics;
 mod git;
 mod hashing;
 mod workspace;

@@ -51,13 +51,10 @@ Ok(
                     commands: [
                         "cargo build",
                     ],
-                    dependencies: [
-                        TaskDependency {
+                    requires: [
+                        TaskRequires {
                             task: "generate",
-                            for_project_deps: Some(
-                                true,
-                            ),
-                            include_this_package: None,
+                            target: "...self",
                         },
                     ],
                     input_blocks: [

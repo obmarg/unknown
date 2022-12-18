@@ -5,7 +5,7 @@ use ignore::WalkBuilder;
 use super::{
     parsing::{parse_project_file, parse_task_file, parse_workspace_file, Validator},
     paths::{RelativePath, ValidPath, WorkspaceRoot},
-    UnvalidatedConfig, UnvalidatedProjectFile, UnvalidatedWorkspaceFile, ValidConfig,
+    ConfigSource, UnvalidatedConfig, UnvalidatedProjectFile, UnvalidatedWorkspaceFile, ValidConfig,
     ValidProjectFile, WorkspaceFile,
 };
 
@@ -20,14 +20,14 @@ pub fn load_unvalidated_config_from_path(
         .expect("to be able to canonicalise current path");
 
     let workspace_path = find_workspace_file(current_path).ok_or(MissingWorkspaceFile)?;
-    let config = parse_workspace_file(
-        workspace_path.as_ref(),
-        &std::fs::read_to_string(&workspace_path).expect("couldn't read workspace file"),
-    )?;
+    let source_text =
+        std::fs::read_to_string(&workspace_path).expect("couldn't read workspace file");
+    let config = parse_workspace_file(workspace_path.as_ref(), &source_text)?;
     let workspace_root = WorkspaceRoot::new(workspace_path.parent().unwrap());
     let workspace_file = UnvalidatedWorkspaceFile {
         workspace_root: workspace_root.clone(),
         config,
+        source: ConfigSource::new(workspace_path.file_name().unwrap(), source_text),
     };
 
     let project_paths = workspace_file
@@ -157,7 +157,7 @@ fn load_project_file(
     Ok(UnvalidatedProjectFile {
         project_root,
         config,
-        source_text,
+        source: ConfigSource::new(project_file_path.as_subpath(), source_text),
         project_file_path: project_file_path.clone(),
     })
 }
@@ -186,10 +186,9 @@ pub(super) fn import_tasks(
             parse_task_file(task_path.as_subpath(), &task_file_contents)
                 .map_err(TaskImportError::ParsingError)?;
 
-        let source_code =
-            super::parsing::SourceCode::new(task_path.as_subpath(), task_file_contents);
+        let config_source = super::ConfigSource::new(task_path.as_subpath(), task_file_contents);
 
-        let config = validator.validate_tasks(config, &task_path.parent().unwrap(), &source_code);
+        let config = validator.validate_tasks(config, &task_path.parent().unwrap(), &config_source);
 
         if let Some(config) = config {
             imports.extend(config.imports.into_iter());

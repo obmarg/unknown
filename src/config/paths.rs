@@ -165,6 +165,7 @@ impl WorkspaceRoot {
         WorkspaceRoot(path_buf)
     }
 
+    // TODO: A bad name this, think on it.
     pub fn normalise_absolute(&self, path: impl Into<Utf8PathBuf>) -> Result<ValidPath, PathError> {
         let path = path.into();
         let absolute = match path.is_absolute() {

@@ -1,10 +1,10 @@
+use validated::Selection;
+
 use crate::config::{
     paths::{ConfigPath, ConfigPathValidationError, ValidPath},
     spanned::{SourceSpanExt, Spanned, WithSpan},
     validated, Glob, WorkspaceRoot,
 };
-
-use super::CollectResults;
 
 #[derive(knuffel::Decode, Debug, Default)]
 pub struct TaskBlock {
@@ -37,7 +37,7 @@ pub struct TaskDefinition {
     #[knuffel(children(name = "command"), unwrap(argument))]
     pub(super) commands: Vec<String>,
 
-    #[knuffel(children(name = "require"))]
+    #[knuffel(children(name = "requires"))]
     pub(super) requires: Vec<TaskRequires>,
 
     #[knuffel(children(name = "inputs"))]
@@ -56,7 +56,7 @@ impl From<InputBlock> for validated::InputBlock {
 
 #[derive(knuffel::Decode, Debug)]
 pub struct TaskRequires {
-    #[knuffel(property)]
+    #[knuffel(argument)]
     task: Spanned<String>,
 
     #[knuffel(property(name = "in"))]
@@ -74,7 +74,7 @@ impl TaskRequires {
         let task_span = self.task.span.clone();
 
         let target = target_selector::parser()
-            .parse(self.task.as_str())
+            .parse(self.target.as_str())
             .map_err(|e| {
                 let err = e.first().unwrap();
                 let err_span = err.span();
@@ -84,44 +84,27 @@ impl TaskRequires {
                 }
             })?;
 
-        let target = match target {
-            ParsedSelector::Project(inner, span) => validated::TargetSelector::Project(
-                inner
-                    .validate(workspace_root)
-                    .map_err(|e| {
-                        TaskValidationError::InvalidPaths(vec![ConfigPathValidationError::new(
-                            e,
-                            task_span.subspan(span.start, span.len()),
-                        )])
-                    })?
-                    .with_span(task_span.subspan(span.start, span.len())),
-            ),
-            ParsedSelector::ProjectWithDependencies(inner, span) => {
-                validated::TargetSelector::ProjectWithDependencies(
-                    inner
-                        .validate(workspace_root)
-                        .map_err(|e| {
-                            TaskValidationError::InvalidPaths(vec![ConfigPathValidationError::new(
-                                e,
-                                task_span.subspan(span.start, span.len()),
-                            )])
-                        })?
-                        .with_span(task_span.subspan(span.start, span.len())),
-                )
+        let (anchor, span, selection) = match target {
+            ParsedSelector::Project(anchor, span) => (anchor, span, Selection::Project),
+            ParsedSelector::ProjectWithDependencies(anchor, span) => {
+                (anchor, span, Selection::ProjectWithDependencies)
             }
-            ParsedSelector::JustDependencies(inner, span) => {
-                validated::TargetSelector::JustDependencies(
-                    inner
-                        .validate(workspace_root)
-                        .map_err(|e| {
-                            TaskValidationError::InvalidPaths(vec![ConfigPathValidationError::new(
-                                e,
-                                task_span.subspan(span.start, span.len()),
-                            )])
-                        })?
-                        .with_span(task_span.subspan(span.start, span.len())),
-                )
+            ParsedSelector::JustDependencies(anchor, span) => {
+                (anchor, span, Selection::JustDependencies)
             }
+        };
+
+        let target = validated::TargetSelector {
+            anchor: anchor
+                .validate(workspace_root)
+                .map_err(|e| {
+                    TaskValidationError::InvalidPaths(vec![ConfigPathValidationError::new(
+                        e,
+                        task_span.subspan(span.start, span.len()),
+                    )])
+                })?
+                .with_span(task_span.subspan(span.start, span.len())),
+            selection,
         };
 
         Ok(validated::TaskRequires {

@@ -78,3 +78,42 @@ impl DynDiagnostic {
         self
     }
 }
+
+#[derive(thiserror::Error, miette::Diagnostic, Debug)]
+#[error("Errors occurred when validating your configuration")]
+pub struct ConfigError {
+    #[related]
+    pub errors: Vec<DynDiagnostic>,
+}
+
+pub trait CollectResults {
+    type Item;
+    type Err;
+
+    fn collect_results(self) -> Result<Vec<Self::Item>, Vec<Self::Err>>;
+}
+
+impl<Iter, Item, Err> CollectResults for Iter
+where
+    Iter: IntoIterator<Item = Result<Item, Err>>,
+{
+    type Item = Item;
+    type Err = Err;
+
+    fn collect_results(self) -> Result<Vec<Self::Item>, Vec<Self::Err>> {
+        let mut items = Vec::new();
+        let mut errs = Vec::new();
+        for res in self {
+            match res {
+                Ok(item) => items.push(item),
+                Err(err) => errs.push(err),
+            }
+        }
+
+        if !errs.is_empty() {
+            return Err(errs);
+        }
+
+        Ok(items)
+    }
+}

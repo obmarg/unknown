@@ -2,7 +2,7 @@ use crate::config::validated;
 
 use super::{
     super::paths::{ConfigPath, ConfigPathValidationError, ValidPath},
-    tasks, CollectResults,
+    tasks,
 };
 
 #[derive(knuffel::Decode, Debug)]

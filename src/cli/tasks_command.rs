@@ -26,8 +26,8 @@ pub fn run(workspace: Workspace, opts: TasksOpts) -> miette::Result<()> {
     let outputs = workspace.projects().map(|project| Output {
         project: project.name.clone(),
         tasks: project
-            .tasks
-            .iter()
+            .tasks(&workspace)
+            .into_iter()
             .map(|t| t.name.as_ref())
             .collect::<Vec<_>>()
             .join("\n"),

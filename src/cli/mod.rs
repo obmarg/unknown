@@ -62,7 +62,11 @@ fn load_workspace() -> Result<Workspace, miette::Report> {
         .expect("the current directory to be a utf8 path"),
     )?;
 
-    Ok(Workspace::new(config.workspace_file, config.project_files))
+    let mut workspace = Workspace::new(config.workspace_file);
+
+    workspace.add_projects(config.project_files)?;
+
+    Ok(workspace)
 }
 
 #[cfg(test)]

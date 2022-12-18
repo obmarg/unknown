@@ -32,7 +32,9 @@ impl HashRegistry {
                 .into_iter()
                 .flat_map(|task_hashes| {
                     let project = workspace.project_at_path(task_hashes.project)?;
-                    let task_ref = project.lookup_task(&task_hashes.task)?.task_ref();
+                    let task_ref = project
+                        .lookup_task(&task_hashes.task, workspace)?
+                        .task_ref();
                     Some((task_ref, task_hashes.hahes))
                 })
                 .collect(),

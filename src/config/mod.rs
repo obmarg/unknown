@@ -1,3 +1,4 @@
+mod config_source;
 mod glob;
 mod loader;
 mod parsing;
@@ -5,14 +6,15 @@ mod paths;
 mod spanned;
 mod validated;
 
+use self::paths::ConfigPath;
 pub use self::{
+    config_source::ConfigSource,
     glob::Glob,
     loader::{load_config_from_path, load_project_files},
     parsing::{ParsingError, Validator},
     paths::{ValidPath, WorkspaceRoot},
     validated::{project::ProjectDefinition, tasks::*, workspace::WorkspaceDefinition},
 };
-use self::{parsing::CollectResults, paths::ConfigPath};
 
 #[cfg(test)]
 mod tests;
@@ -43,12 +45,14 @@ pub struct ValidConfig {
 pub struct UnvalidatedWorkspaceFile {
     pub workspace_root: WorkspaceRoot,
     config: parsing::WorkspaceDefinition,
+    source: ConfigSource,
 }
 
 #[derive(Debug)]
 pub struct WorkspaceFile {
     pub workspace_root: WorkspaceRoot,
     pub config: validated::WorkspaceDefinition,
+    pub source: ConfigSource,
 }
 
 #[derive(Debug)]
@@ -56,7 +60,7 @@ pub struct UnvalidatedProjectFile {
     pub project_root: ValidPath,
     project_file_path: ValidPath,
     config: parsing::ProjectDefinition,
-    source_text: String,
+    source: ConfigSource,
 }
 
 impl UnvalidatedProjectFile {
@@ -70,6 +74,7 @@ impl UnvalidatedProjectFile {
 pub struct ValidProjectFile {
     pub project_root: ValidPath,
     pub config: validated::ProjectDefinition,
+    pub source: ConfigSource,
 }
 
 #[derive(Debug)]

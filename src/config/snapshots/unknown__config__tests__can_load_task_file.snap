@@ -10,7 +10,7 @@ TaskBlock {
             commands: [
                 "cargo build",
             ],
-            dependencies: [],
+            requires: [],
             input_blocks: [],
         },
     ],

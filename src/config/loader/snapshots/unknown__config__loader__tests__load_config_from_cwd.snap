@@ -1,6 +1,6 @@
 ---
 source: src/config/loader/tests.rs
-expression: "load_config_from_path(\"sample-monorepo/\".into()).unwrap().validate().unwrap()"
+expression: "load_config_from_path(\"sample-monorepo/\".into()).unwrap()"
 ---
 ValidConfig {
     workspace_file: WorkspaceFile {
@@ -27,6 +27,10 @@ ValidConfig {
                     },
                 ),
             ],
+        },
+        source: ConfigSource {
+            filename: "workspace.kdl",
+            ..
         },
     },
     project_files: [
@@ -55,27 +59,39 @@ ValidConfig {
                             commands: [
                                 "echo \"build-a-service\"",
                             ],
-                            dependencies: [
-                                TaskDependency {
+                            requires: [
+                                TaskRequires {
                                     task: "build",
-                                    for_project_deps: Some(
-                                        true,
-                                    ),
-                                    include_this_package: None,
+                                    target: TargetSelector {
+                                        anchor: CurrentProject,
+                                        selection: ProjectWithDependencies,
+                                    },
                                 },
                             ],
                             input_blocks: [],
+                            source: ConfigSource {
+                                filename: "projects/a-service/project.kdl",
+                                ..
+                            },
                         },
                         TaskDefinition {
                             name: "bye",
                             commands: [
                                 "echo \"bye\"",
                             ],
-                            dependencies: [],
+                            requires: [],
                             input_blocks: [],
+                            source: ConfigSource {
+                                filename: "projects/a-service/bye.nabs",
+                                ..
+                            },
                         },
                     ],
                 },
+            },
+            source: ConfigSource {
+                filename: "projects/a-service/project.kdl",
+                ..
             },
         },
         ValidProjectFile {
@@ -96,27 +112,43 @@ ValidConfig {
                             commands: [
                                 "echo \"build-a-lib\"",
                             ],
-                            dependencies: [],
+                            requires: [],
                             input_blocks: [],
+                            source: ConfigSource {
+                                filename: "projects/a-lib/project.kdl",
+                                ..
+                            },
                         },
                         TaskDefinition {
                             name: "hello",
                             commands: [
                                 "echo \"hello\"",
                             ],
-                            dependencies: [],
+                            requires: [],
                             input_blocks: [],
+                            source: ConfigSource {
+                                filename: "tasks/hello.nabs",
+                                ..
+                            },
                         },
                         TaskDefinition {
                             name: "hello2",
                             commands: [
                                 "echo \"hello\"",
                             ],
-                            dependencies: [],
+                            requires: [],
                             input_blocks: [],
+                            source: ConfigSource {
+                                filename: "tasks/hello2.nabs",
+                                ..
+                            },
                         },
                     ],
                 },
+            },
+            source: ConfigSource {
+                filename: "projects/a-lib/project.kdl",
+                ..
             },
         },
     ],

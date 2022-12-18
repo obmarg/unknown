@@ -14,12 +14,9 @@ impl<T> Spanned<T> {
     }
 }
 
-impl<T, U> AsRef<U> for Spanned<T>
-where
-    T: AsRef<U>,
-{
-    fn as_ref(&self) -> &U {
-        self.inner.as_ref()
+impl<T> AsRef<T> for Spanned<T> {
+    fn as_ref(&self) -> &T {
+        &self.inner
     }
 }
 

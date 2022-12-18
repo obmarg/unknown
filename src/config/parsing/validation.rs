@@ -4,20 +4,14 @@
 
 use camino::Utf8PathBuf;
 
-use crate::config::{
-    parsing, paths::ConfigPathValidationError, validated, UnvalidatedConfig,
-    UnvalidatedProjectFile, UnvalidatedWorkspaceFile, ValidConfig, ValidPath, ValidProjectFile,
-    WorkspaceFile, WorkspaceRoot,
+use crate::{
+    config::{
+        parsing, paths::ConfigPathValidationError, validated, ConfigSource, UnvalidatedConfig,
+        UnvalidatedProjectFile, UnvalidatedWorkspaceFile, ValidConfig, ValidPath, ValidProjectFile,
+        WorkspaceFile, WorkspaceRoot,
+    },
+    diagnostics::{CollectResults, ConfigError, DynDiagnostic},
 };
-
-use super::{diagnostics::DynDiagnostic, CollectResults};
-
-#[derive(thiserror::Error, miette::Diagnostic, Debug)]
-#[error("Errors occurred when validating your configuration")]
-pub struct ValidationError {
-    #[related]
-    errors: Vec<DynDiagnostic>,
-}
 
 pub struct Validator {
     workspace_root: WorkspaceRoot,
@@ -33,11 +27,11 @@ impl Validator {
         }
     }
 
-    pub fn ok(&mut self) -> Result<(), ValidationError> {
+    pub fn ok(&mut self) -> Result<(), ConfigError> {
         if self.errors.is_empty() {
             return Ok(());
         }
-        return Err(ValidationError {
+        return Err(ConfigError {
             errors: std::mem::take(&mut self.errors),
         });
     }
@@ -45,7 +39,7 @@ impl Validator {
     pub fn validate_config(
         &mut self,
         config: UnvalidatedConfig,
-    ) -> Result<ValidConfig, ValidationError> {
+    ) -> Result<ValidConfig, ConfigError> {
         let workspace_file = self.validate_workspace_file(config.workspace_file);
 
         let project_files = config
@@ -79,17 +73,18 @@ impl Validator {
                 name: workspace.config.name,
                 project_paths: workspace.config.project_paths,
             },
+            source: workspace.source,
         })
     }
 
     fn validate_project_file(&mut self, file: UnvalidatedProjectFile) -> Option<ValidProjectFile> {
-        let source_code = SourceCode::new(file.project_file_path.as_subpath(), file.source_text);
         let config =
-            self.validate_project_definition(file.config, &file.project_root, &source_code)?;
+            self.validate_project_definition(file.config, &file.project_root, &file.source)?;
 
         Some(ValidProjectFile {
             project_root: file.project_root,
             config,
+            source: file.source,
         })
     }
 
@@ -97,7 +92,7 @@ impl Validator {
         &mut self,
         project: parsing::ProjectDefinition,
         project_path: &ValidPath,
-        source_code: &SourceCode,
+        config_source: &ConfigSource,
     ) -> Option<validated::ProjectDefinition> {
         let dependencies = project
             .dependencies
@@ -106,9 +101,11 @@ impl Validator {
             .map(|p| p.validate_relative_to(project_path))
             .collect_results();
 
-        let tasks = self.validate_tasks(project.tasks, project_path, &source_code);
+        let tasks = self.validate_tasks(project.tasks, project_path, &config_source);
 
-        let (dependencies, tasks) = self.record_errors(dependencies, &source_code).zip(tasks)?;
+        let (dependencies, tasks) = self
+            .record_errors(dependencies, &config_source)
+            .zip(tasks)?;
 
         // let tasks = project.tasks.validate(project_path)?;
 
@@ -123,7 +120,7 @@ impl Validator {
         &mut self,
         tasks: parsing::TaskBlock,
         relative_to: &ValidPath,
-        source_code: &SourceCode,
+        source_code: &ConfigSource,
     ) -> Option<validated::TaskBlock> {
         let imports = tasks
             .imports
@@ -147,7 +144,7 @@ impl Validator {
     pub fn validate_task(
         &mut self,
         task: parsing::TaskDefinition,
-        source_code: &SourceCode,
+        config_source: &ConfigSource,
     ) -> Option<validated::TaskDefinition> {
         let requires = task
             .requires
@@ -155,18 +152,22 @@ impl Validator {
             .map(|r| r.parse(&self.workspace_root))
             .collect_results();
 
-        let requires = self.record_errors(requires, &source_code)?;
+        let requires = self.record_errors(requires, &config_source)?;
 
         Some(validated::TaskDefinition {
             name: task.name,
             commands: task.commands,
-            dependencies: vec![],
             requires,
             input_blocks: task.input_blocks.into_iter().map(Into::into).collect(),
+            source: config_source.clone(),
         })
     }
 
-    fn record_errors<T, E>(&mut self, res: Result<T, Vec<E>>, source_code: &SourceCode) -> Option<T>
+    fn record_errors<T, E>(
+        &mut self,
+        res: Result<T, Vec<E>>,
+        config_source: &ConfigSource,
+    ) -> Option<T>
     where
         E: miette::Diagnostic + Send + Sync + 'static,
     {
@@ -174,10 +175,8 @@ impl Validator {
             Ok(inner) => Some(inner),
             Err(errors) => {
                 for error in errors {
-                    self.errors.push(
-                        DynDiagnostic::new(error)
-                            .with_source_code(source_code.clone().into_miette()),
-                    );
+                    self.errors
+                        .push(DynDiagnostic::new(error).with_source_code(config_source.clone()));
                 }
                 None
             }
@@ -187,25 +186,6 @@ impl Validator {
 
 #[derive(thiserror::Error, miette::Diagnostic, Debug)]
 #[error("A task file failed validation")]
-pub enum TaskValidationError {
+pub enum TaskConfigError {
     InvalidPaths(#[related] Vec<ConfigPathValidationError>),
-}
-
-#[derive(Clone)]
-pub struct SourceCode {
-    filename: String,
-    code: String,
-}
-
-impl SourceCode {
-    pub fn new(filename: &Utf8PathBuf, code: impl Into<String>) -> Self {
-        SourceCode {
-            filename: filename.to_string(),
-            code: code.into(),
-        }
-    }
-
-    pub fn into_miette(self) -> impl miette::SourceCode {
-        miette::NamedSource::new(self.filename, self.code)
-    }
 }

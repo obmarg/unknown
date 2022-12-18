@@ -1,6 +1,6 @@
 ---
 source: src/workspace/tests.rs
-expression: "Workspace::new(config.workspace_file, config.project_files)"
+expression: workspace
 ---
 Workspace {
     info: WorkspaceInfo {
@@ -36,50 +36,6 @@ Workspace {
         ): ProjectInfo {
             name: "a-lib",
             dependencies: [],
-            tasks: [
-                TaskInfo {
-                    project: ProjectRef(
-                        ValidPath {
-                            workspace_root: WorkspaceRoot(
-                                "/Users/graeme/src/unknown/src/workspace/test-data/",
-                            ),
-                            subpath: "projects/a-lib",
-                        },
-                    ),
-                    project_name: "a-lib",
-                    name: "build",
-                    commands: [
-                        "echo \"build-a-lib\"",
-                    ],
-                    dependencies: [],
-                    inputs: TaskInputs {
-                        paths: [],
-                        env_vars: [],
-                        commands: [],
-                    },
-                },
-                TaskInfo {
-                    project: ProjectRef(
-                        ValidPath {
-                            workspace_root: WorkspaceRoot(
-                                "/Users/graeme/src/unknown/src/workspace/test-data/",
-                            ),
-                            subpath: "projects/a-lib",
-                        },
-                    ),
-                    project_name: "a-lib",
-                    name: "hello",
-                    commands: [
-                        "echo \"hello\"",
-                    ],
-                    dependencies: [],
-                    inputs: TaskInputs {
-                        paths: [],
-                        env_vars: [],
-                        commands: [],
-                    },
-                },
-            ],
             root: ValidPath {
                 workspace_root: WorkspaceRoot(
                     "/Users/graeme/src/unknown/src/workspace/test-data/",
@@ -106,63 +62,160 @@ Workspace {
                     },
                 ),
             ],
-            tasks: [
-                TaskInfo {
-                    project: ProjectRef(
-                        ValidPath {
-                            workspace_root: WorkspaceRoot(
-                                "/Users/graeme/src/unknown/src/workspace/test-data/",
-                            ),
-                            subpath: "projects/a-service",
-                        },
-                    ),
-                    project_name: "a-service",
-                    name: "build",
-                    commands: [
-                        "echo \"build-a-service\"",
-                    ],
-                    dependencies: [
-                        TaskDependency {
-                            task: NamedTask(
-                                "build",
-                            ),
-                            target_self: true,
-                            target_deps: true,
-                        },
-                    ],
-                    inputs: TaskInputs {
-                        paths: [],
-                        env_vars: [],
-                        commands: [],
-                    },
-                },
-                TaskInfo {
-                    project: ProjectRef(
-                        ValidPath {
-                            workspace_root: WorkspaceRoot(
-                                "/Users/graeme/src/unknown/src/workspace/test-data/",
-                            ),
-                            subpath: "projects/a-service",
-                        },
-                    ),
-                    project_name: "a-service",
-                    name: "bye",
-                    commands: [
-                        "echo \"bye\"",
-                    ],
-                    dependencies: [],
-                    inputs: TaskInputs {
-                        paths: [],
-                        env_vars: [],
-                        commands: [],
-                    },
-                },
-            ],
             root: ValidPath {
                 workspace_root: WorkspaceRoot(
                     "/Users/graeme/src/unknown/src/workspace/test-data/",
                 ),
                 subpath: "projects/a-service",
+            },
+        },
+    },
+    task_map: {
+        TaskRef(
+            ProjectRef(
+                ValidPath {
+                    workspace_root: WorkspaceRoot(
+                        "/Users/graeme/src/unknown/src/workspace/test-data/",
+                    ),
+                    subpath: "projects/a-lib",
+                },
+            ),
+            "build",
+        ): TaskInfo {
+            project: ProjectRef(
+                ValidPath {
+                    workspace_root: WorkspaceRoot(
+                        "/Users/graeme/src/unknown/src/workspace/test-data/",
+                    ),
+                    subpath: "projects/a-lib",
+                },
+            ),
+            project_name: "a-lib",
+            name: "build",
+            commands: [
+                "echo \"build-a-lib\"",
+            ],
+            requires: [],
+            inputs: TaskInputs {
+                paths: [],
+                env_vars: [],
+                commands: [],
+            },
+        },
+        TaskRef(
+            ProjectRef(
+                ValidPath {
+                    workspace_root: WorkspaceRoot(
+                        "/Users/graeme/src/unknown/src/workspace/test-data/",
+                    ),
+                    subpath: "projects/a-lib",
+                },
+            ),
+            "hello",
+        ): TaskInfo {
+            project: ProjectRef(
+                ValidPath {
+                    workspace_root: WorkspaceRoot(
+                        "/Users/graeme/src/unknown/src/workspace/test-data/",
+                    ),
+                    subpath: "projects/a-lib",
+                },
+            ),
+            project_name: "a-lib",
+            name: "hello",
+            commands: [
+                "echo \"hello\"",
+            ],
+            requires: [],
+            inputs: TaskInputs {
+                paths: [],
+                env_vars: [],
+                commands: [],
+            },
+        },
+        TaskRef(
+            ProjectRef(
+                ValidPath {
+                    workspace_root: WorkspaceRoot(
+                        "/Users/graeme/src/unknown/src/workspace/test-data/",
+                    ),
+                    subpath: "projects/a-service",
+                },
+            ),
+            "build",
+        ): TaskInfo {
+            project: ProjectRef(
+                ValidPath {
+                    workspace_root: WorkspaceRoot(
+                        "/Users/graeme/src/unknown/src/workspace/test-data/",
+                    ),
+                    subpath: "projects/a-service",
+                },
+            ),
+            project_name: "a-service",
+            name: "build",
+            commands: [
+                "echo \"build-a-service\"",
+            ],
+            requires: [
+                PossibleTaskRef(
+                    ProjectRef(
+                        ValidPath {
+                            workspace_root: WorkspaceRoot(
+                                "/Users/graeme/src/unknown/src/workspace/test-data/",
+                            ),
+                            subpath: "projects/a-lib",
+                        },
+                    ),
+                    "build",
+                ),
+                PossibleTaskRef(
+                    ProjectRef(
+                        ValidPath {
+                            workspace_root: WorkspaceRoot(
+                                "/Users/graeme/src/unknown/src/workspace/test-data/",
+                            ),
+                            subpath: "projects/a-service",
+                        },
+                    ),
+                    "build",
+                ),
+            ],
+            inputs: TaskInputs {
+                paths: [],
+                env_vars: [],
+                commands: [],
+            },
+        },
+        TaskRef(
+            ProjectRef(
+                ValidPath {
+                    workspace_root: WorkspaceRoot(
+                        "/Users/graeme/src/unknown/src/workspace/test-data/",
+                    ),
+                    subpath: "projects/a-service",
+                },
+            ),
+            "bye",
+        ): TaskInfo {
+            project: ProjectRef(
+                ValidPath {
+                    workspace_root: WorkspaceRoot(
+                        "/Users/graeme/src/unknown/src/workspace/test-data/",
+                    ),
+                    subpath: "projects/a-service",
+                },
+            ),
+            project_name: "a-service",
+            name: "bye",
+            commands: [
+                "echo \"bye\"",
+            ],
+            requires: [],
+            inputs: TaskInputs {
+                paths: [],
+                env_vars: [],
+                commands: [],
             },
         },
     },
