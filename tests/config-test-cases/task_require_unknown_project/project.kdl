@@ -1,0 +1,7 @@
+project "service-a"
+
+tasks {
+    task "build" {
+        requires "build" in="a-missing-project"
+    }
+}

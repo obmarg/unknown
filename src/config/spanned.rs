@@ -89,11 +89,9 @@ impl SourceSpanExt for miette::SourceSpan {
         let current_len = self.len();
 
         if len > current_len {
-            panic!("tried to make an invalid subspan");
+            panic!("tried to make an subspan of length {len} but the parent only has length {current_len}");
         }
 
-        let start = offset + start;
-
-        miette::SourceSpan::from((start, start + len))
+        miette::SourceSpan::from((offset + start, len))
     }
 }

@@ -31,9 +31,9 @@ impl Validator {
         if self.errors.is_empty() {
             return Ok(());
         }
-        return Err(ConfigError {
+        Err(ConfigError {
             errors: std::mem::take(&mut self.errors),
-        });
+        })
     }
 
     pub fn validate_config(
@@ -188,4 +188,45 @@ impl Validator {
 #[error("A task file failed validation")]
 pub enum TaskConfigError {
     InvalidPaths(#[related] Vec<ConfigPathValidationError>),
+}
+
+#[cfg(test)]
+mod tests {
+    use rstest::rstest;
+
+    use super::*;
+    use crate::test_files::TestFiles;
+
+    #[rstest]
+    #[case("/library")]
+    #[case("../library")]
+    fn project_dependency_happy_path(#[case] path: &str) {
+        let files = TestFiles::new()
+            .with_file("library/project.kdl", r#"project "library"#)
+            .with_file("service/project.kdl", "");
+        let source = ConfigSource::new(
+            "service/project.kdl",
+            format!(
+                r#"
+                project "service"
+                dependencies {{
+                    project "{path}"
+                }}
+                "#
+            ),
+        );
+        let project = parsing::parse_project_file(&source).unwrap();
+        let mut validator = Validator::new(files.root());
+        let project_path = files
+            .root()
+            .subpath("service/")
+            .unwrap()
+            .validate()
+            .unwrap();
+
+        let project = validator.validate_project_definition(project, &project_path, &source);
+
+        validator.ok().unwrap();
+        assert_eq!(project.unwrap().dependencies.len(), 1);
+    }
 }

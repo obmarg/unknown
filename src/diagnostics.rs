@@ -72,7 +72,7 @@ impl DynDiagnostic {
 
     pub fn with_source_code(mut self, source_code: impl SourceCode + 'static) -> Self {
         // If inner already has source_code we trust that is correct and leave it alone
-        if let None = self.inner.source_code() {
+        if self.inner.source_code().is_none() {
             self.source_code = Some(Box::new(source_code));
         }
         self

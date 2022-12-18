@@ -147,8 +147,8 @@ fn load_project_file(
 ) -> Result<UnvalidatedProjectFile, miette::Report> {
     let source_text =
         std::fs::read_to_string(project_file_path.full_path()).expect("couldn't read project file");
-    let config = parse_project_file(project_file_path.as_subpath(), &source_text)
-        .map_err(miette::Report::new)?;
+    let source = ConfigSource::new(project_file_path.as_subpath(), source_text);
+    let config = parse_project_file(&source).map_err(miette::Report::new)?;
 
     let project_root = project_file_path
         .parent()
@@ -157,7 +157,7 @@ fn load_project_file(
     Ok(UnvalidatedProjectFile {
         project_root,
         config,
-        source: ConfigSource::new(project_file_path.as_subpath(), source_text),
+        source,
         project_file_path: project_file_path.clone(),
     })
 }

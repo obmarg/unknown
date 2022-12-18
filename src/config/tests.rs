@@ -3,7 +3,10 @@ use std::{fs::File, io::Read};
 use camino::Utf8PathBuf;
 use miette::{GraphicalReportHandler, GraphicalTheme};
 
-use super::parsing::{parse_project_file, parse_task_file, parse_workspace_file};
+use super::{
+    parsing::{parse_project_file, parse_task_file, parse_workspace_file},
+    ConfigSource,
+};
 
 #[test]
 fn test_can_load_project_file() {
@@ -12,12 +15,9 @@ fn test_can_load_project_file() {
         .unwrap()
         .read_to_string(&mut str_data)
         .unwrap();
+    let source = ConfigSource::new("blah/project.kdl", str_data);
 
-    insta::assert_debug_snapshot!(parse_project_file(
-        &Utf8PathBuf::from("blah/project.kdl"),
-        &dbg!(str_data)
-    )
-    .map_err(|e| miette::Report::new(e.0)))
+    insta::assert_debug_snapshot!(parse_project_file(&source).map_err(|e| miette::Report::new(e.0)))
 }
 
 #[test]

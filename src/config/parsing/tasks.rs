@@ -71,7 +71,7 @@ impl TaskRequires {
         use chumsky::Parser;
         use target_selector::ParsedSelector;
 
-        let task_span = self.task.span.clone();
+        let target_span = self.target.span;
 
         let target = target_selector::parser()
             .parse(self.target.as_str())
@@ -79,31 +79,34 @@ impl TaskRequires {
                 let err = e.first().unwrap();
                 let err_span = err.span();
                 TaskValidationError::MalformedRequire {
-                    span: task_span.subspan(err_span.start, err_span.len()),
+                    span: target_span.subspan(err_span.start + 1, err_span.len()),
                     message: err.to_string(),
                 }
             })?;
 
-        let (anchor, span, selection) = match target {
-            ParsedSelector::Project(anchor, span) => (anchor, span, Selection::Project),
-            ParsedSelector::ProjectWithDependencies(anchor, span) => {
-                (anchor, span, Selection::ProjectWithDependencies)
+        let (anchor, selection) = match target {
+            ParsedSelector::Project(anchor) => (anchor, Selection::Project),
+            ParsedSelector::ProjectWithDependencies(anchor) => {
+                (anchor, Selection::ProjectWithDependencies)
             }
-            ParsedSelector::JustDependencies(anchor, span) => {
-                (anchor, span, Selection::JustDependencies)
-            }
+            ParsedSelector::JustDependencies(anchor) => (anchor, Selection::JustDependencies),
+        };
+
+        let anchor_span = {
+            let span = anchor.span();
+            target_span.subspan(span.start + 1, span.len())
         };
 
         let target = validated::TargetSelector {
             anchor: anchor
-                .validate(workspace_root)
+                .validate(target_span, workspace_root)
                 .map_err(|e| {
                     TaskValidationError::InvalidPaths(vec![ConfigPathValidationError::new(
                         e,
-                        task_span.subspan(span.start, span.len()),
+                        anchor_span,
                     )])
                 })?
-                .with_span(task_span.subspan(span.start, span.len())),
+                .with_span(anchor_span),
             selection,
         };
 
@@ -133,28 +136,44 @@ mod target_selector {
     use chumsky::prelude::*;
     use knuffel::{ast::Literal, decode::Kind, errors::DecodeError, traits::ErrorSpan};
 
-    use crate::config::{paths::PathError, validated, TargetAnchor, TargetSelector, WorkspaceRoot};
+    use crate::config::{
+        paths::PathError,
+        spanned::{SourceSpanExt, Spanned, WithSpan},
+        validated, TargetAnchor, TargetSelector, WorkspaceRoot,
+    };
 
     #[derive(Clone, Debug)]
     pub enum ParsedSelector {
-        Project(ParsedAnchor, Range<usize>),
-        ProjectWithDependencies(ParsedAnchor, Range<usize>),
-        JustDependencies(ParsedAnchor, Range<usize>),
+        Project(ParsedAnchor),
+        ProjectWithDependencies(ParsedAnchor),
+        JustDependencies(ParsedAnchor),
     }
 
     #[derive(Clone, Debug)]
     pub enum ParsedAnchor {
-        CurrentProject,
-        ProjectByName(String),
-        ProjectByPath(Utf8PathBuf),
+        CurrentProject(Range<usize>),
+        ProjectByName(String, Range<usize>),
+        ProjectByPath(Utf8PathBuf, Range<usize>),
     }
 
     impl ParsedAnchor {
-        pub fn validate(self, workspace_root: &WorkspaceRoot) -> Result<TargetAnchor, PathError> {
+        pub fn span(&self) -> Range<usize> {
+            match self {
+                ParsedAnchor::CurrentProject(span) => span.clone(),
+                ParsedAnchor::ProjectByName(_, span) => span.clone(),
+                ParsedAnchor::ProjectByPath(_, span) => span.clone(),
+            }
+        }
+
+        pub fn validate(
+            self,
+            target_span: miette::SourceSpan,
+            workspace_root: &WorkspaceRoot,
+        ) -> Result<TargetAnchor, PathError> {
             Ok(match self {
-                ParsedAnchor::CurrentProject => TargetAnchor::CurrentProject,
-                ParsedAnchor::ProjectByName(name) => TargetAnchor::ProjectByName(name),
-                ParsedAnchor::ProjectByPath(path) => {
+                ParsedAnchor::CurrentProject(_) => TargetAnchor::CurrentProject,
+                ParsedAnchor::ProjectByName(name, _) => TargetAnchor::ProjectByName(name),
+                ParsedAnchor::ProjectByPath(path, _) => {
                     TargetAnchor::ProjectByPath(workspace_root.subpath(path)?.validate()?)
                 }
             })
@@ -169,7 +188,7 @@ mod target_selector {
             .map(Some)
             .chain::<char, Vec<_>, _>(filter(is_package_char).repeated())
             .collect::<String>()
-            .map(ParsedAnchor::ProjectByName);
+            .map_with_span(ParsedAnchor::ProjectByName);
 
         let package_path = filter(|c| *c == '/')
             .map(Some)
@@ -179,10 +198,12 @@ mod target_selector {
             .try_map(|val: Result<Utf8PathBuf, _>, span| {
                 val.map_err(|e| Simple::custom(span, format!("Couldn't parse a path: {e}")))
             })
-            .map(ParsedAnchor::ProjectByPath);
+            .map_with_span(ParsedAnchor::ProjectByPath);
 
         let anchor = choice::<_, Simple<char>>((
-            text::keyword("self").to(ParsedAnchor::CurrentProject),
+            text::keyword("self")
+                .to(())
+                .map_with_span(|_, span| ParsedAnchor::CurrentProject(span)),
             package_path,
             package_name,
         ));
@@ -190,11 +211,11 @@ mod target_selector {
         choice::<_, Simple<char>>((
             just(['.', '.', '.', '^'])
                 .ignore_then(anchor.clone())
-                .map_with_span(ParsedSelector::JustDependencies),
+                .map(ParsedSelector::JustDependencies),
             just(['.', '.', '.'])
                 .ignore_then(anchor.clone())
-                .map_with_span(ParsedSelector::ProjectWithDependencies),
-            anchor.map_with_span(ParsedSelector::Project),
+                .map(ParsedSelector::ProjectWithDependencies),
+            anchor.map(ParsedSelector::Project),
         ))
     }
 
@@ -209,51 +230,51 @@ mod target_selector {
         fn parsing_selector() {
             assert_matches!(
                 parser().parse("self").unwrap(),
-                ParsedSelector::Project(ParsedAnchor::CurrentProject, _)
+                ParsedSelector::Project(ParsedAnchor::CurrentProject(_))
             );
             assert_matches!(
                 parser().parse("...self").unwrap(),
-                ParsedSelector::ProjectWithDependencies(ParsedAnchor::CurrentProject, _)
+                ParsedSelector::ProjectWithDependencies(ParsedAnchor::CurrentProject(_))
             );
             assert_matches!(
                 parser().parse("...^self").unwrap(),
-                ParsedSelector::JustDependencies(ParsedAnchor::CurrentProject, _)
+                ParsedSelector::JustDependencies(ParsedAnchor::CurrentProject(_))
             );
 
             assert_matches!(
                 parser().parse("some-project-name").unwrap(),
-                ParsedSelector::Project(ParsedAnchor::ProjectByName(name), _) => {
+                ParsedSelector::Project(ParsedAnchor::ProjectByName(name, _)) => {
                     assert_eq!(name, "some-project-name");
                 }
             );
             assert_matches!(
                 parser().parse("...some-project-name").unwrap(),
-                ParsedSelector::ProjectWithDependencies(ParsedAnchor::ProjectByName(name), _) => {
+                ParsedSelector::ProjectWithDependencies(ParsedAnchor::ProjectByName(name, _)) => {
                     assert_eq!(name, "some-project-name");
                 }
             );
             assert_matches!(
                 parser().parse("...^some-project-name").unwrap(),
-                ParsedSelector::JustDependencies(ParsedAnchor::ProjectByName(name), _) => {
+                ParsedSelector::JustDependencies(ParsedAnchor::ProjectByName(name, _)) => {
                     assert_eq!(name, "some-project-name");
                 }
             );
 
             assert_matches!(
                 parser().parse("/lib/project").unwrap(),
-                ParsedSelector::Project(ParsedAnchor::ProjectByPath(name), _) => {
+                ParsedSelector::Project(ParsedAnchor::ProjectByPath(name, _)) => {
                     assert_eq!(name, "/lib/project");
                 }
             );
             assert_matches!(
                 parser().parse(".../lib/project").unwrap(),
-                ParsedSelector::ProjectWithDependencies(ParsedAnchor::ProjectByPath(name), _) => {
+                ParsedSelector::ProjectWithDependencies(ParsedAnchor::ProjectByPath(name, _)) => {
                     assert_eq!(name, "/lib/project");
                 }
             );
             assert_matches!(
                 parser().parse("...^/lib/project").unwrap(),
-                ParsedSelector::JustDependencies(ParsedAnchor::ProjectByPath(name), _) => {
+                ParsedSelector::JustDependencies(ParsedAnchor::ProjectByPath(name, _)) => {
                     assert_eq!(name, "/lib/project");
                 }
             );

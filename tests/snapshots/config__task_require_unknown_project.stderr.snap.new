@@ -1,0 +1,19 @@
+---
+source: tests/config.rs
+assertion_line: 24
+expression: stderr.as_ref()
+---
+Error: 
+  × Errors occurred when validating your configuration
+
+Error: 
+  × Couldn't find a project named a-missing-project
+   ╭─[project.kdl:4:1]
+ 4 │     task "build" {
+ 5 │         requires "build" in="a-missing-project"
+   ·                              ────────┬────────
+   ·                                      ╰── Couldn't find this project
+ 6 │     }
+   ╰────
+
+

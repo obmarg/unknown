@@ -294,6 +294,7 @@ impl TaskInfo {
 
 #[derive(thiserror::Error, miette::Diagnostic, Debug)]
 pub enum TaskResolutionError {
+    #[diagnostic()]
     #[error("Couldn't find a project named {name}")]
     UnknownProjectByName {
         name: String,
@@ -303,6 +304,7 @@ pub enum TaskResolutionError {
         #[source_code]
         source_code: ConfigSource,
     },
+    #[diagnostic()]
     #[error("Couldn't find a project at the path {path}")]
     UnknownProjectByPath {
         path: ValidPath,
@@ -312,9 +314,13 @@ pub enum TaskResolutionError {
         #[source_code]
         source_code: ConfigSource,
     },
-    #[error("Tried to require a task from an unrelated project")]
+    #[diagnostic(help("You can only require tasks from direct or indirect dependencies"))]
+    #[error("Tried to require a task from {required_project}, which is not an ancestor of {current_project}")]
     RequiredFromUnrelatedProject {
-        #[label = "This project isn't in the current projects dependency tree"]
+        required_project: String,
+        current_project: String,
+
+        #[label = "You specified {required_project} here"]
         span: SourceSpan,
 
         #[source_code]
@@ -348,6 +354,8 @@ fn resolve_requires(
 
     if !current_project.has_dependency(&anchor.project_ref(), workspace) {
         return Err(TaskResolutionError::RequiredFromUnrelatedProject {
+            required_project: anchor.name.clone(),
+            current_project: current_project.name.clone(),
             span: requires.target.anchor.span,
             source_code: source.clone(),
         });

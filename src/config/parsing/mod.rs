@@ -9,6 +9,8 @@ pub(super) use self::{project::ProjectDefinition, tasks::*, workspace::Workspace
 
 pub use validation::Validator;
 
+use super::ConfigSource;
+
 #[derive(Debug, thiserror::Error)]
 #[error("Error parsing {1}")]
 pub struct ParsingError(pub(super) knuffel::Error, pub(super) Utf8PathBuf);
@@ -47,12 +49,10 @@ impl miette::Diagnostic for ParsingError {
     }
 }
 
-pub fn parse_project_file(
-    path: &Utf8Path,
-    contents: &str,
-) -> Result<ProjectDefinition, ParsingError> {
-    let config = knuffel::parse::<ProjectDefinition>(path.as_str(), contents)
-        .map_err(|e| ParsingError(e, path.to_owned()))?;
+pub fn parse_project_file(config: &ConfigSource) -> Result<ProjectDefinition, ParsingError> {
+    let filename = config.filename();
+    let config = knuffel::parse::<ProjectDefinition>(filename, config.contents())
+        .map_err(|e| ParsingError(e, filename.to_owned().into()))?;
 
     // TODO: At some point want to validate the data in the file.
     // e.g. names can't have commas or slashes in them etc.
