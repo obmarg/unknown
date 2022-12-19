@@ -58,7 +58,7 @@ pub struct TaskRequires {
     task: Spanned<String>,
 
     #[knuffel(property(name = "in"))]
-    target: Spanned<String>,
+    target: Option<Spanned<String>>,
 }
 
 impl TaskRequires {
@@ -69,12 +69,21 @@ impl TaskRequires {
         use chumsky::Parser;
         use target_selector::ParsedSelector;
 
-        let target_span = self.target.span;
         let task_span = self.task.span;
+        let task = self.task.into_inner().with_span(task_span);
+
+        if self.target.is_none() {
+            return Ok(validated::TaskRequires { task, target: None });
+        }
+
+        let target = self.target.unwrap();
+        let target_span = target.span;
 
         let target = target_selector::parser()
-            .parse(self.target.as_str())
+            .parse(target.as_str())
             .map_err(|e| {
+                // TODO: The errors this produces are pretty awful.  Might need to look into
+                // another parser at some point.
                 let err = e.first().unwrap();
                 let err_span = err.span();
                 TaskValidationError::MalformedRequire {
@@ -109,8 +118,8 @@ impl TaskRequires {
         };
 
         Ok(validated::TaskRequires {
-            task: self.task.into_inner().with_span(task_span),
-            target: target.with_span(target_span),
+            task,
+            target: Some(target.with_span(target_span)),
         })
     }
 }

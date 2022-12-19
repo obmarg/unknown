@@ -4,7 +4,6 @@ use super::super::{paths::ValidPath, spanned::Spanned};
 
 #[derive(Debug, Default)]
 pub struct TaskBlock {
-    // TODO: what should this be...?
     pub(in crate::config) imports: Vec<ValidPath>,
 
     pub tasks: Vec<TaskDefinition>,
@@ -26,19 +25,7 @@ pub struct TaskDefinition {
 #[derive(Debug)]
 pub struct TaskRequires {
     pub task: Spanned<String>,
-    pub target: Spanned<TargetSelector>,
-}
-
-#[derive(Debug)]
-pub struct TaskDependency {
-    pub task: String,
-
-    // TODO: This feels like a shit name, come up with something better.
-    // for_ancestors?  for_parents?
-    // run_for_parents?
-    pub for_project_deps: Option<bool>,
-
-    pub include_this_package: Option<bool>,
+    pub target: Option<Spanned<TargetSelector>>,
 }
 
 #[derive(Debug)]

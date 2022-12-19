@@ -62,7 +62,9 @@ ValidConfig {
                             requires: [
                                 TaskRequires {
                                     task: "build",
-                                    target: DependenciesOfCurrent,
+                                    target: Some(
+                                        DependenciesOfCurrent,
+                                    ),
                                 },
                             ],
                             input_blocks: [],

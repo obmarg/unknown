@@ -16,14 +16,4 @@ pub struct ProjectDefinition {
 pub struct DependencyBlock {
     #[knuffel(children(name = "project"), unwrap(argument))]
     pub(in crate::config) projects: Vec<ConfigPath>,
-    // #[knuffel(children(name = "path"), unwrap(argument))]
-    // pub paths: Vec<String>,
-    // #[knuffel(children(name = "import"))]
-    // pub imports: Vec<DependencyImport>,
 }
-
-// #[derive(knuffel::Decode, Debug)]
-// pub struct DependencyImport {
-//     #[knuffel(argument)]
-//     path: String,
-// }

@@ -1,0 +1,65 @@
+---
+source: src/config/parsing/validation.rs
+expression: output
+---
+ProjectDefinition {
+    project: "service",
+    dependencies: [
+        ValidPath {
+            workspace_root: WorkspaceRoot(
+                "[path]",
+            ),
+            subpath: "library",
+        },
+        ValidPath {
+            workspace_root: WorkspaceRoot(
+                "[path]",
+            ),
+            subpath: "library",
+        },
+    ],
+    tasks: TaskBlock {
+        imports: [],
+        tasks: [
+            TaskDefinition {
+                name: "build",
+                commands: [
+                    "cargo build",
+                ],
+                requires: [
+                    TaskRequires {
+                        task: "a-task-in-library",
+                        target: Some(
+                            SpecificDependency(
+                                ByName(
+                                    "library",
+                                ),
+                            ),
+                        ),
+                    },
+                    TaskRequires {
+                        task: "a-task-in-our-deps",
+                        target: Some(
+                            DependenciesOfCurrent,
+                        ),
+                    },
+                    TaskRequires {
+                        task: "a-task-in-ourselves",
+                        target: Some(
+                            CurrentProject,
+                        ),
+                    },
+                    TaskRequires {
+                        task: "a-task-without-an-in-specified",
+                        target: None,
+                    },
+                ],
+                input_blocks: [],
+                source: ConfigSource {
+                    filename: "service/project.kdl",
+                    ..
+                },
+            },
+        ],
+    },
+}

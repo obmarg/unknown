@@ -37,10 +37,6 @@ impl ConfigSource {
     pub fn contents(&self) -> &str {
         &self.inner.code
     }
-
-    // pub fn to_miette(&self) -> miette::NamedSource {
-    //     miette::NamedSource::new(&self.inner.filename, self.inner.code.clone())
-    // }
 }
 
 impl miette::SourceCode for ConfigSource {

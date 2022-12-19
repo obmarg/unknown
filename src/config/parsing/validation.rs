@@ -1,7 +1,3 @@
-// TODO: Consider having a validator type that contains a list of errors
-// and other neccesary context, then have all the validation done by that.
-// Might be neater than trying to be all object oriented about it...
-
 use crate::{
     config::{
         parsing, validated, ConfigSource, UnvalidatedConfig, UnvalidatedProjectFile,
@@ -52,9 +48,6 @@ impl Validator {
             .zip(project_files)
             .expect("validation errors if theres any nones here");
 
-        // TODO: This may need to do some final validation
-        // to make sure all the task references line up and stuff...
-
         Ok(ValidConfig {
             workspace_file,
             project_files,
@@ -102,8 +95,6 @@ impl Validator {
         let tasks = self.validate_tasks(project.tasks, project_path, config_source);
 
         let (dependencies, tasks) = self.record_errors(dependencies, config_source).zip(tasks)?;
-
-        // let tasks = project.tasks.validate(project_path)?;
 
         Some(validated::ProjectDefinition {
             project: project.project,
@@ -182,28 +173,38 @@ impl Validator {
 
 #[cfg(test)]
 mod tests {
-    use rstest::rstest;
+    use camino::Utf8PathBuf;
 
     use super::*;
     use crate::test_files::TestFiles;
 
-    #[rstest]
-    #[case("/library")]
-    #[case("../library")]
-    fn project_dependency_happy_path(#[case] path: &str) {
+    #[test]
+    fn project_validation_happy_path() {
         let files = TestFiles::new()
             .with_file("library/project.kdl", r#"project "library"#)
             .with_file("service/project.kdl", "");
         let source = ConfigSource::new(
             "service/project.kdl",
-            format!(
-                r#"
+            r#"
                 project "service"
-                dependencies {{
-                    project "{path}"
-                }}
-                "#
-            ),
+                dependencies {
+                    project "/library"
+                    project "../library"
+                }
+
+                tasks {
+                    task "build" {
+                        // These technically aren't valid, but the ways they're wrong
+                        // are validated later on in the process.
+                        requires "a-task-in-library" in="library"
+                        requires "a-task-in-our-deps" in="^self"
+                        requires "a-task-in-ourselves" in="self"
+                        requires "a-task-without-an-in-specified"
+
+                        command "cargo build"
+                    }
+                }
+                "#,
         );
         let project = parsing::parse_project_file(&source).unwrap();
         let mut validator = Validator::new(files.root());
@@ -217,6 +218,12 @@ mod tests {
         let project = validator.validate_project_definition(project, &project_path, &source);
 
         validator.ok().unwrap();
-        assert_eq!(project.unwrap().dependencies.len(), 1);
+
+        let output = format!("{:#?}", project.unwrap())
+            .replace(Utf8PathBuf::from(files.root()).as_str(), "[path]");
+
+        insta::assert_snapshot!(output);
     }
+
+    // Note: Most of the unhappy paths are covered by integration tests.
 }

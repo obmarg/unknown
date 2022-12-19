@@ -1,0 +1,14 @@
+project "service-a"
+
+dependencies {
+    project "other-project"
+}
+
+tasks {
+    task "build" {
+        requires "pre-build"
+        requires "pre-build-2" in="self"
+        requires "pre-build-3" in="^self"
+        requires "pre-build-4" in="other-project"
+    }
+}

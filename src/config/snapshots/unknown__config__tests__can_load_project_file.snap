@@ -54,7 +54,9 @@ Ok(
                     requires: [
                         TaskRequires {
                             task: "generate",
-                            target: "^self",
+                            target: Some(
+                                "^self",
+                            ),
                         },
                     ],
                     input_blocks: [

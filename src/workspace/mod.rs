@@ -113,7 +113,6 @@ impl Workspace {
                         project: project_ref.clone(),
                         name: task.name,
                         commands: task.commands,
-                        // requires: requires.into_iter().flatten().collect(),
                         inputs: TaskInputs::from_config(&task.input_blocks),
                     },
                 );
@@ -179,10 +178,6 @@ impl Workspace {
         self.project_map.values().find(|p| p.name == name)
     }
 
-    // pub fn lookup_project(&self, name: impl AsRef<str>) -> Option<&ProjectInfo> {
-    //     self.project_map.get(name.as_ref())
-    // }
-
     pub fn root_path(&self) -> &WorkspaceRoot {
         &self.info.root_path
     }
@@ -201,8 +196,6 @@ impl Workspace {
 
 impl ProjectRef {
     pub fn lookup<'a>(&self, workspace: &'a Workspace) -> &'a ProjectInfo {
-        // TODO: This basically assumes a ProjectRef is always valid.
-        // Probably need to enforce that with types somehow or make this return an option
         &workspace.project_map[self]
     }
 }
@@ -220,7 +213,6 @@ impl TaskRef {
 pub struct ProjectInfo {
     pub name: String,
     pub dependencies: Vec<ProjectRef>,
-    // pub tasks: Vec<TaskInfo>,
     pub root: ValidPath,
 }
 
@@ -273,7 +265,6 @@ impl std::fmt::Display for TaskRef {
     }
 }
 
-// TODO: Think about sticking this in an arc or similar rather than clone
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct TaskInfo {
     pub project: ProjectRef,
@@ -338,6 +329,18 @@ enum TaskResolutionError {
         #[source_code]
         source_code: ConfigSource,
     },
+    #[diagnostic(help("Make sure you've specified the correct task name"))]
+    #[error("Found a requires statement that doesn't match any tasks")]
+    NoMatchingTasksForImplicitSelf {
+        #[label = "expected to find at least one task with this name in {current_project}"]
+        task_name_span: SourceSpan,
+
+        task_name: String,
+        current_project: String,
+
+        #[source_code]
+        source_code: ConfigSource,
+    },
 }
 
 #[derive(Debug)]
@@ -361,7 +364,12 @@ fn resolve_requires(
     workspace: &Workspace,
     source: &ConfigSource,
 ) -> Result<Vec<TaskRef>, TaskResolutionError> {
-    let projects = match requires.target.as_ref() {
+    let target = match &requires.target {
+        Some(target) => target.as_ref(),
+        None => &TargetSelector::CurrentProject,
+    };
+
+    let projects = match target {
         TargetSelector::CurrentProject => vec![current_project],
         TargetSelector::DependenciesOfCurrent => current_project
             .direct_dependencies::<Vec<_>>(workspace)
@@ -406,18 +414,26 @@ fn resolve_requires(
         .collect::<Vec<_>>();
 
     if tasks.is_empty() {
-        return Err(TaskResolutionError::NoMatchingTasks {
-            task_name_span: requires.task.span,
-            target_span: requires.target.span,
-            task_name: requires.task.as_ref().clone(),
-            target_pronoun: match requires.target.as_ref() {
-                TargetSelector::CurrentProject | TargetSelector::SpecificDependency(_) => {
-                    TargetPronoun::This
-                }
-                TargetSelector::DependenciesOfCurrent => TargetPronoun::These,
-            },
-            source_code: source.clone(),
-        });
+        return match &requires.target {
+            Some(target) => Err(TaskResolutionError::NoMatchingTasks {
+                task_name_span: requires.task.span,
+                target_span: target.span,
+                task_name: requires.task.as_ref().clone(),
+                target_pronoun: match target.as_ref() {
+                    TargetSelector::CurrentProject | TargetSelector::SpecificDependency(_) => {
+                        TargetPronoun::This
+                    }
+                    TargetSelector::DependenciesOfCurrent => TargetPronoun::These,
+                },
+                source_code: source.clone(),
+            }),
+            None => Err(TaskResolutionError::NoMatchingTasksForImplicitSelf {
+                task_name_span: requires.task.span,
+                task_name: requires.task.as_str().to_owned(),
+                current_project: current_project.name.clone(),
+                source_code: source.clone(),
+            }),
+        };
     }
 
     Ok(tasks)
