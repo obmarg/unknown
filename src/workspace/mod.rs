@@ -1,9 +1,11 @@
-use std::collections::{BTreeSet, HashMap, HashSet};
+use std::collections::{HashMap, HashSet};
 
 use miette::SourceSpan;
 
 use crate::{
-    config::{self, ConfigSource, TargetAnchor, ValidPath, WorkspaceRoot},
+    config::{
+        self, ConfigSource, SpecificProjectSelector, TargetSelector, ValidPath, WorkspaceRoot,
+    },
     diagnostics::{CollectResults, ConfigError, DynDiagnostic},
 };
 
@@ -22,6 +24,7 @@ pub struct Workspace {
     graph_: WorkspaceGraph,
     project_map: HashMap<ProjectRef, ProjectInfo>,
     task_map: HashMap<TaskRef, TaskInfo>,
+    task_requirements: Vec<(TaskRef, Vec<TaskRef>)>,
 }
 
 impl std::fmt::Debug for Workspace {
@@ -42,6 +45,7 @@ impl std::fmt::Debug for Workspace {
             .field("info", &self.info)
             .field("project_map", &project_map)
             .field("task_map", &task_map)
+            .field("task_requirements", &self.task_requirements)
             .finish_non_exhaustive()
     }
 }
@@ -72,6 +76,7 @@ impl Workspace {
             info: workspace_info,
             project_map: HashMap::new(),
             task_map: HashMap::new(),
+            task_requirements: Vec::new(),
         }
     }
 
@@ -99,9 +104,20 @@ impl Workspace {
                 dependencies.push(ProjectRef(path));
             }
 
-            // TODO: handle task imports
             for task in project_file.config.tasks.tasks {
-                tasks_to_process.push((project_ref.clone(), task));
+                let task_ref = TaskRef(project_ref.clone(), task.name.clone());
+                self.task_map.insert(
+                    task_ref.clone(),
+                    TaskInfo {
+                        project_name: project_file.config.project.clone(),
+                        project: project_ref.clone(),
+                        name: task.name,
+                        commands: task.commands,
+                        // requires: requires.into_iter().flatten().collect(),
+                        inputs: TaskInputs::from_config(&task.input_blocks),
+                    },
+                );
+                tasks_to_process.push((task_ref, task.requires, task.source));
             }
 
             self.project_map.insert(
@@ -115,35 +131,23 @@ impl Workspace {
         }
 
         self.graph_.add_projects(&self.project_map);
+        self.graph_.register_tasks(&self.task_map);
 
         let mut errors = Vec::new();
-        for (project_ref, task) in tasks_to_process {
-            let project = &self.project_map[&project_ref];
-            let requires = task
-                .requires
+        for (task_ref, requires, source) in tasks_to_process {
+            let project = task_ref.project().lookup(self);
+            let requires = requires
                 .into_iter()
-                .map(|requires| {
-                    resolve_requires(requires, project_ref.lookup(self), self, &task.source)
-                })
+                .map(|requires| resolve_requires(requires, project, self, &source))
                 .collect_results();
 
             match requires {
-                Ok(requires) => {
-                    self.task_map.insert(
-                        TaskRef(project_ref.clone(), task.name.clone()),
-                        TaskInfo {
-                            project_name: project.name.clone(),
-                            project: project_ref.clone(),
-                            name: task.name.clone(),
-                            commands: task.commands.clone(),
-                            requires: requires.into_iter().flatten().collect(),
-                            inputs: TaskInputs::from_config(&task.input_blocks),
-                        },
-                    );
-                }
+                Ok(requires) => self
+                    .task_requirements
+                    .push((task_ref, requires.into_iter().flatten().collect())),
                 Err(errs) => errors.extend(
                     errs.into_iter()
-                        .map(|e| DynDiagnostic::new(e).with_source_code(task.source.clone())),
+                        .map(|e| DynDiagnostic::new(e).with_source_code(source.clone())),
                 ),
             }
         }
@@ -152,7 +156,7 @@ impl Workspace {
             return Err(ConfigError { errors });
         }
 
-        self.graph_.register_tasks(&self.task_map);
+        self.graph_.generate_task_edges(&self.task_requirements);
 
         Ok(())
     }
@@ -269,10 +273,6 @@ impl std::fmt::Display for TaskRef {
     }
 }
 
-/// A TaskRef that may or may not exist.
-#[derive(Clone, Debug, Hash, PartialEq, Eq)]
-pub struct PossibleTaskRef(ProjectRef, String);
-
 // TODO: Think about sticking this in an arc or similar rather than clone
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct TaskInfo {
@@ -280,7 +280,6 @@ pub struct TaskInfo {
     pub project_name: String,
     pub name: String,
     pub commands: Vec<String>,
-    pub requires: Vec<PossibleTaskRef>,
     pub inputs: TaskInputs,
 }
 
@@ -291,7 +290,7 @@ impl TaskInfo {
 }
 
 #[derive(thiserror::Error, miette::Diagnostic, Debug)]
-pub enum TaskResolutionError {
+enum TaskResolutionError {
     #[diagnostic()]
     #[error("Couldn't find a project named {name}")]
     UnknownProjectByName {
@@ -312,8 +311,8 @@ pub enum TaskResolutionError {
         #[source_code]
         source_code: ConfigSource,
     },
-    #[diagnostic(help("You can only require tasks from direct or indirect dependencies"))]
-    #[error("Tried to require a task from {required_project}, which is not an ancestor of {current_project}")]
+    #[diagnostic(help("You can only require tasks from direct dependencies"))]
+    #[error("Tried to require a task from {required_project}, which is not a dependency of {current_project}")]
     RequiredFromUnrelatedProject {
         required_project: String,
         current_project: String,
@@ -324,6 +323,36 @@ pub enum TaskResolutionError {
         #[source_code]
         source_code: ConfigSource,
     },
+    #[diagnostic(help("Make sure you've specified the correct project and task name"))]
+    #[error("Found a requires statement that doesn't match any tasks")]
+    NoMatchingTasks {
+        #[label = "expected to find at least one task with this name"]
+        task_name_span: SourceSpan,
+
+        #[label = "{target_pronoun} not have a task named {task_name}"]
+        target_span: SourceSpan,
+
+        task_name: String,
+        target_pronoun: TargetPronoun,
+
+        #[source_code]
+        source_code: ConfigSource,
+    },
+}
+
+#[derive(Debug)]
+pub enum TargetPronoun {
+    This,
+    These,
+}
+
+impl std::fmt::Display for TargetPronoun {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            TargetPronoun::This => write!(f, "this project does"),
+            TargetPronoun::These => write!(f, "these projects do"),
+        }
+    }
 }
 
 fn resolve_requires(
@@ -331,48 +360,67 @@ fn resolve_requires(
     current_project: &ProjectInfo,
     workspace: &Workspace,
     source: &ConfigSource,
-) -> Result<Vec<PossibleTaskRef>, TaskResolutionError> {
-    let anchor = match requires.target.anchor.as_ref() {
-        TargetAnchor::CurrentProject => current_project,
-        TargetAnchor::ProjectByName(name) => workspace.project_by_name(name).ok_or_else(|| {
-            TaskResolutionError::UnknownProjectByName {
-                name: name.to_string(),
-                span: requires.target.anchor.span,
-                source_code: source.clone(),
+) -> Result<Vec<TaskRef>, TaskResolutionError> {
+    let projects = match requires.target.as_ref() {
+        TargetSelector::CurrentProject => vec![current_project],
+        TargetSelector::DependenciesOfCurrent => current_project
+            .direct_dependencies::<Vec<_>>(workspace)
+            .into_iter()
+            .map(|project| project.lookup(workspace))
+            .collect(),
+        TargetSelector::SpecificDependency(selector) => {
+            let project =
+                match selector.as_ref() {
+                    SpecificProjectSelector::ByName(name) => workspace
+                        .project_by_name(name.as_str())
+                        .ok_or_else(|| TaskResolutionError::UnknownProjectByName {
+                            name: name.to_string(),
+                            span: selector.span,
+                            source_code: source.clone(),
+                        })?,
+                    SpecificProjectSelector::ByPath(path) => workspace
+                        .project_at_path(path.full_path())
+                        .ok_or_else(|| TaskResolutionError::UnknownProjectByPath {
+                            path: path.clone(),
+                            span: selector.span,
+                            source_code: source.clone(),
+                        })?,
+                };
+
+            if !current_project.has_dependency(&project.project_ref(), workspace) {
+                return Err(TaskResolutionError::RequiredFromUnrelatedProject {
+                    required_project: project.name.clone(),
+                    current_project: current_project.name.clone(),
+                    span: selector.span,
+                    source_code: source.clone(),
+                });
             }
-        })?,
-        TargetAnchor::ProjectByPath(path) => workspace
-            .project_at_path(path.full_path())
-            .ok_or_else(|| TaskResolutionError::UnknownProjectByPath {
-                path: path.clone(),
-                span: requires.target.anchor.span,
-                source_code: source.clone(),
-            })?,
+            vec![project]
+        }
     };
 
-    if !current_project.has_dependency(&anchor.project_ref(), workspace) {
-        return Err(TaskResolutionError::RequiredFromUnrelatedProject {
-            required_project: anchor.name.clone(),
-            current_project: current_project.name.clone(),
-            span: requires.target.anchor.span,
+    let tasks = projects
+        .into_iter()
+        .flat_map(|project| project.lookup_task(&requires.task, workspace))
+        .map(|task| task.task_ref())
+        .collect::<Vec<_>>();
+
+    if tasks.is_empty() {
+        return Err(TaskResolutionError::NoMatchingTasks {
+            task_name_span: requires.task.span,
+            target_span: requires.target.span,
+            task_name: requires.task.as_ref().clone(),
+            target_pronoun: match requires.target.as_ref() {
+                TargetSelector::CurrentProject | TargetSelector::SpecificDependency(_) => {
+                    TargetPronoun::This
+                }
+                TargetSelector::DependenciesOfCurrent => TargetPronoun::These,
+            },
             source_code: source.clone(),
         });
     }
 
-    let projects = match requires.target.selection {
-        config::Selection::Project => BTreeSet::from([current_project.project_ref()]),
-        config::Selection::ProjectWithDependencies => current_project.dependencies(workspace),
-        config::Selection::JustDependencies => {
-            let mut deps = current_project.dependencies::<BTreeSet<_>>(workspace);
-            deps.remove(&current_project.project_ref());
-            deps
-        }
-    };
-
-    Ok(projects
-        .into_iter()
-        .map(|project| PossibleTaskRef(project, requires.task.clone()))
-        .collect())
+    Ok(tasks)
 }
 
 #[derive(Clone, Debug, Default, Hash, PartialEq, Eq)]

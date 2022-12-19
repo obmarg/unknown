@@ -6,7 +6,7 @@ use petgraph::{
     visit::{DfsPostOrder, EdgeFiltered, IntoNeighbors, Walker},
 };
 
-use super::{PossibleTaskRef, ProjectInfo, ProjectRef, TaskInfo, TaskRef};
+use super::{ProjectInfo, ProjectRef, TaskInfo, TaskRef};
 
 type Graph = petgraph::Graph<WorkspaceNode, WorkspaceEdge>;
 
@@ -70,35 +70,25 @@ impl WorkspaceGraph {
                 WorkspaceEdge::HasTask,
             );
         }
-        self.generate_task_edges(task_map);
     }
 
-    fn generate_task_edges(&mut self, task_map: &HashMap<TaskRef, TaskInfo>) {
-        // Also quite hard here.  Easy to look up self or project by path.  Difficult by name.
-        // Could simplify by transforming name into path at an earlier stage possibly?
-        for task in task_map.values() {
-            let current_task_index = self.task_indices[&task.task_ref()];
+    pub(super) fn generate_task_edges(&mut self, requirements: &[(TaskRef, Vec<TaskRef>)]) {
+        for (task, dependencies) in requirements {
+            let current_task_index = self.task_indices[task];
 
-            for PossibleTaskRef(project_ref, task) in &task.requires {
-                let actual_ref = TaskRef(project_ref.clone(), task.clone());
-                if task_map.contains_key(&actual_ref) {
-                    // The required task exists, so hook it up.
-                    let target_index = self.task_indices[&actual_ref];
-                    if current_task_index != target_index {
-                        self.graph.add_edge(
-                            current_task_index,
-                            target_index,
-                            WorkspaceEdge::TaskDependsOn,
-                        );
-                        self.graph.add_edge(
-                            target_index,
-                            current_task_index,
-                            WorkspaceEdge::TaskDependedOnBy,
-                        );
-                    }
-                } else {
-                    // TODO: Do we want to error/warn here?
-                    // Currently we just ignore unmet requirements but not sure if that's a good thing....
+            for dependency in dependencies {
+                let target_index = self.task_indices[dependency];
+                if current_task_index != target_index {
+                    self.graph.add_edge(
+                        current_task_index,
+                        target_index,
+                        WorkspaceEdge::TaskDependsOn,
+                    );
+                    self.graph.add_edge(
+                        target_index,
+                        current_task_index,
+                        WorkspaceEdge::TaskDependedOnBy,
+                    );
                 }
             }
         }
@@ -207,6 +197,8 @@ impl ProjectInfo {
         )
     }
 
+    // TODO: Consider calling this ancestors?  Not sure
+    #[allow(dead_code)]
     pub fn dependencies<B>(&self, workspace: &super::Workspace) -> B
     where
         B: FromIterator<ProjectRef>,
@@ -219,6 +211,25 @@ impl ProjectInfo {
 
         DfsPostOrder::new(&filtered_graph, graph.project_indices[&self.project_ref()])
             .iter(&filtered_graph)
+            .filter_map(|index| match &graph.graph[index] {
+                WorkspaceNode::Project(project_ref) => Some(project_ref.clone()),
+                WorkspaceNode::Task(_) | WorkspaceNode::WorkspaceRoot => None,
+            })
+            .collect()
+    }
+
+    pub fn direct_dependencies<B>(&self, workspace: &super::Workspace) -> B
+    where
+        B: FromIterator<ProjectRef>,
+    {
+        let graph = workspace.graph();
+
+        let filtered_graph = EdgeFiltered::from_fn(&graph.graph, |edge| {
+            matches!(edge.weight(), WorkspaceEdge::ProjectDependsOn)
+        });
+
+        filtered_graph
+            .neighbors(graph.project_indices[&self.project_ref()])
             .filter_map(|index| match &graph.graph[index] {
                 WorkspaceNode::Project(project_ref) => Some(project_ref.clone()),
                 WorkspaceNode::Task(_) | WorkspaceNode::WorkspaceRoot => None,

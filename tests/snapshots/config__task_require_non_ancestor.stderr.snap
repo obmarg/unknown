@@ -6,15 +6,15 @@ Error:
   × Errors occurred when validating your configuration
 
 Error: 
-  × Tried to require a task from service-a, which is not an ancestor of
+  × Tried to require a task from service-a, which is not a dependency of
   │ service-b
    ╭─[service-b/project.kdl:4:1]
  4 │     task "build" {
- 5 │         requires "build" in="...^service-a"
-   ·                                  ────┬────
-   ·                                      ╰── You specified service-a here
+ 5 │         requires "build" in="service-a"
+   ·                              ────┬────
+   ·                                  ╰── You specified service-a here
  6 │         command "echo \"hello\""
    ╰────
-  help: You can only require tasks from direct or indirect dependencies
+  help: You can only require tasks from direct dependencies
 
 

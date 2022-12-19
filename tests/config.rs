@@ -11,6 +11,11 @@ fn task_require_unknown_project() {
     test_failing_config("task_require_unknown_project");
 }
 
+#[test]
+fn malformed_require_target() {
+    test_failing_config("malformed_require_target");
+}
+
 fn test_failing_config(name: &str) {
     let mut cmd = Command::cargo_bin("unknown").unwrap();
     cmd.arg("projects");

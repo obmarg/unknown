@@ -95,7 +95,6 @@ Workspace {
             commands: [
                 "echo \"build-a-lib\"",
             ],
-            requires: [],
             inputs: TaskInputs {
                 paths: [],
                 env_vars: [],
@@ -126,7 +125,6 @@ Workspace {
             commands: [
                 "echo \"hello\"",
             ],
-            requires: [],
             inputs: TaskInputs {
                 paths: [],
                 env_vars: [],
@@ -156,30 +154,6 @@ Workspace {
             name: "build",
             commands: [
                 "echo \"build-a-service\"",
-            ],
-            requires: [
-                PossibleTaskRef(
-                    ProjectRef(
-                        ValidPath {
-                            workspace_root: WorkspaceRoot(
-                                "/Users/graeme/src/unknown/src/workspace/test-data/",
-                            ),
-                            subpath: "projects/a-lib",
-                        },
-                    ),
-                    "build",
-                ),
-                PossibleTaskRef(
-                    ProjectRef(
-                        ValidPath {
-                            workspace_root: WorkspaceRoot(
-                                "/Users/graeme/src/unknown/src/workspace/test-data/",
-                            ),
-                            subpath: "projects/a-service",
-                        },
-                    ),
-                    "build",
-                ),
             ],
             inputs: TaskInputs {
                 paths: [],
@@ -211,7 +185,6 @@ Workspace {
             commands: [
                 "echo \"bye\"",
             ],
-            requires: [],
             inputs: TaskInputs {
                 paths: [],
                 env_vars: [],
@@ -219,5 +192,75 @@ Workspace {
             },
         },
     },
+    task_requirements: [
+        (
+            TaskRef(
+                ProjectRef(
+                    ValidPath {
+                        workspace_root: WorkspaceRoot(
+                            "/Users/graeme/src/unknown/src/workspace/test-data/",
+                        ),
+                        subpath: "projects/a-service",
+                    },
+                ),
+                "build",
+            ),
+            [
+                TaskRef(
+                    ProjectRef(
+                        ValidPath {
+                            workspace_root: WorkspaceRoot(
+                                "/Users/graeme/src/unknown/src/workspace/test-data/",
+                            ),
+                            subpath: "projects/a-lib",
+                        },
+                    ),
+                    "build",
+                ),
+            ],
+        ),
+        (
+            TaskRef(
+                ProjectRef(
+                    ValidPath {
+                        workspace_root: WorkspaceRoot(
+                            "/Users/graeme/src/unknown/src/workspace/test-data/",
+                        ),
+                        subpath: "projects/a-service",
+                    },
+                ),
+                "bye",
+            ),
+            [],
+        ),
+        (
+            TaskRef(
+                ProjectRef(
+                    ValidPath {
+                        workspace_root: WorkspaceRoot(
+                            "/Users/graeme/src/unknown/src/workspace/test-data/",
+                        ),
+                        subpath: "projects/a-lib",
+                    },
+                ),
+                "build",
+            ),
+            [],
+        ),
+        (
+            TaskRef(
+                ProjectRef(
+                    ValidPath {
+                        workspace_root: WorkspaceRoot(
+                            "/Users/graeme/src/unknown/src/workspace/test-data/",
+                        ),
+                        subpath: "projects/a-lib",
+                    },
+                ),
+                "hello",
+            ),
+            [],
+        ),
+    ],
     ..
 }

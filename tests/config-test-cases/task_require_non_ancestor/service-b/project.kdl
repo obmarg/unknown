@@ -2,7 +2,7 @@ project "service-b"
 
 tasks {
     task "build" {
-        requires "build" in="...^service-a"
+        requires "build" in="service-a"
         command "echo \"hello\""
     }
 }

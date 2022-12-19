@@ -1,0 +1,20 @@
+---
+source: tests/config.rs
+expression: stderr.as_ref()
+---
+Error: 
+  × Errors occurred when validating your configuration
+
+Error: 
+  × Found a requires statement that doesn't match any tasks
+   ╭─[project.kdl:4:1]
+ 4 │     task "build" {
+ 5 │         requires "build" in="^self"
+   ·                  ───┬───    ───┬───
+   ·                     │          ╰── these projects do not have a task named build
+   ·                     ╰── expected to find at least one task with this name
+ 6 │     }
+   ╰────
+  help: Make sure you've specified the correct project and task name
+
+

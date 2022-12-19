@@ -9,7 +9,7 @@ tasks {
     import "bye.nabs"
 
     task "build" {
-        requires "build" in="...self"
+        requires "build" in="^self"
         command r#"echo "build-a-service""#
     }
 }

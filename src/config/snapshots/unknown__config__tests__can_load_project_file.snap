@@ -1,6 +1,6 @@
 ---
 source: src/config/tests.rs
-expression: "parse_project_file(&Utf8PathBuf::from(\"blah/project.kdl\"),\n        &dbg!(str_data)).map_err(|e| miette::Report::new(e.0))"
+expression: "parse_project_file(&source).map_err(|e| miette::Report::new(e.0))"
 ---
 Ok(
     ProjectDefinition {
@@ -54,7 +54,7 @@ Ok(
                     requires: [
                         TaskRequires {
                             task: "generate",
-                            target: "...self",
+                            target: "^self",
                         },
                     ],
                     input_blocks: [

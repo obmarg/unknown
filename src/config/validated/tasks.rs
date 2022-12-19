@@ -25,8 +25,8 @@ pub struct TaskDefinition {
 
 #[derive(Debug)]
 pub struct TaskRequires {
-    pub task: String,
-    pub target: TargetSelector,
+    pub task: Spanned<String>,
+    pub target: Spanned<TargetSelector>,
 }
 
 #[derive(Debug)]
@@ -48,23 +48,15 @@ pub struct InputBlock {
     pub commands: Vec<String>,
 }
 
-// TargetSelector maybe?
 #[derive(Clone, Debug)]
-pub struct TargetSelector {
-    pub anchor: Spanned<TargetAnchor>,
-    pub selection: Selection,
-}
-
-#[derive(Clone, Debug, Hash, PartialEq, Eq)]
-pub enum Selection {
-    Project,
-    ProjectWithDependencies,
-    JustDependencies,
-}
-
-#[derive(Clone, Debug, Hash, PartialEq, Eq)]
-pub enum TargetAnchor {
+pub enum TargetSelector {
     CurrentProject,
-    ProjectByName(String),
-    ProjectByPath(ValidPath),
+    DependenciesOfCurrent,
+    SpecificDependency(Spanned<SpecificProjectSelector>),
+}
+
+#[derive(Clone, Debug)]
+pub enum SpecificProjectSelector {
+    ByName(String),
+    ByPath(ValidPath),
 }

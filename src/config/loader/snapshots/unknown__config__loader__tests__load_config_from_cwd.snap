@@ -62,10 +62,7 @@ ValidConfig {
                             requires: [
                                 TaskRequires {
                                     task: "build",
-                                    target: TargetSelector {
-                                        anchor: CurrentProject,
-                                        selection: ProjectWithDependencies,
-                                    },
+                                    target: DependenciesOfCurrent,
                                 },
                             ],
                             input_blocks: [],

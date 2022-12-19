@@ -10,5 +10,5 @@ pub struct WorkspaceDefinition {
 }
 
 #[derive(thiserror::Error, miette::Diagnostic, Debug)]
-#[error("A task file failed validation")]
+#[error("Workspace failed validation")]
 pub enum WorkspaceValidationError {}
