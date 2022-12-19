@@ -12,7 +12,6 @@ pub struct Validator {
     errors: Vec<DynDiagnostic>,
 }
 
-// TODO: Ensure the public API of this makes sense once I'm done.
 impl Validator {
     pub fn new(workspace_root: WorkspaceRoot) -> Self {
         Validator {
@@ -128,7 +127,7 @@ impl Validator {
         Some(validated::TaskBlock { imports, tasks })
     }
 
-    pub fn validate_task(
+    fn validate_task(
         &mut self,
         task: parsing::TaskDefinition,
         config_source: &ConfigSource,
