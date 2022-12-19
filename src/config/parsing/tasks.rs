@@ -1,7 +1,7 @@
 use validated::Selection;
 
 use crate::config::{
-    paths::{ConfigPath, ConfigPathValidationError, ValidPath},
+    paths::{ConfigPath, ConfigPathValidationError},
     spanned::{SourceSpanExt, Spanned, WithSpan},
     validated, Glob, WorkspaceRoot,
 };
@@ -21,8 +21,6 @@ pub struct TaskBlock {
 #[error("A task file failed validation")]
 pub enum TaskValidationError {
     InvalidPaths(#[related] Vec<ConfigPathValidationError>),
-    InvalidTasks(#[related] Vec<TaskValidationError>),
-    InvalidRequires(#[related] Vec<TaskValidationError>),
     MalformedRequire {
         span: miette::SourceSpan,
         message: String,
@@ -99,7 +97,7 @@ impl TaskRequires {
 
         let target = validated::TargetSelector {
             anchor: anchor
-                .validate(target_span, workspace_root)
+                .validate(workspace_root)
                 .map_err(|e| {
                     TaskValidationError::InvalidPaths(vec![ConfigPathValidationError::new(
                         e,
@@ -134,13 +132,8 @@ mod target_selector {
 
     use camino::Utf8PathBuf;
     use chumsky::prelude::*;
-    use knuffel::{ast::Literal, decode::Kind, errors::DecodeError, traits::ErrorSpan};
 
-    use crate::config::{
-        paths::PathError,
-        spanned::{SourceSpanExt, Spanned, WithSpan},
-        validated, TargetAnchor, TargetSelector, WorkspaceRoot,
-    };
+    use crate::config::{paths::PathError, TargetAnchor, WorkspaceRoot};
 
     #[derive(Clone, Debug)]
     pub enum ParsedSelector {
@@ -165,11 +158,7 @@ mod target_selector {
             }
         }
 
-        pub fn validate(
-            self,
-            target_span: miette::SourceSpan,
-            workspace_root: &WorkspaceRoot,
-        ) -> Result<TargetAnchor, PathError> {
+        pub fn validate(self, workspace_root: &WorkspaceRoot) -> Result<TargetAnchor, PathError> {
             Ok(match self {
                 ParsedAnchor::CurrentProject(_) => TargetAnchor::CurrentProject,
                 ParsedAnchor::ProjectByName(name, _) => TargetAnchor::ProjectByName(name),

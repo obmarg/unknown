@@ -58,7 +58,6 @@ pub struct WorkspaceFile {
 #[derive(Debug)]
 pub struct UnvalidatedProjectFile {
     pub project_root: ValidPath,
-    project_file_path: ValidPath,
     config: parsing::ProjectDefinition,
     source: ConfigSource,
 }
@@ -67,7 +66,6 @@ impl UnvalidatedProjectFile {
     pub fn unvalidated_dependency_paths(&self) -> impl Iterator<Item = &ConfigPath> {
         self.config.dependencies.projects.iter()
     }
-
 }
 
 #[derive(Debug)]

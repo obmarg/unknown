@@ -2,13 +2,11 @@
 // and other neccesary context, then have all the validation done by that.
 // Might be neater than trying to be all object oriented about it...
 
-use camino::Utf8PathBuf;
-
 use crate::{
     config::{
-        parsing, paths::ConfigPathValidationError, validated, ConfigSource, UnvalidatedConfig,
-        UnvalidatedProjectFile, UnvalidatedWorkspaceFile, ValidConfig, ValidPath, ValidProjectFile,
-        WorkspaceFile, WorkspaceRoot,
+        parsing, validated, ConfigSource, UnvalidatedConfig, UnvalidatedProjectFile,
+        UnvalidatedWorkspaceFile, ValidConfig, ValidPath, ValidProjectFile, WorkspaceFile,
+        WorkspaceRoot,
     },
     diagnostics::{CollectResults, ConfigError, DynDiagnostic},
 };
@@ -101,11 +99,9 @@ impl Validator {
             .map(|p| p.validate_relative_to(project_path))
             .collect_results();
 
-        let tasks = self.validate_tasks(project.tasks, project_path, &config_source);
+        let tasks = self.validate_tasks(project.tasks, project_path, config_source);
 
-        let (dependencies, tasks) = self
-            .record_errors(dependencies, &config_source)
-            .zip(tasks)?;
+        let (dependencies, tasks) = self.record_errors(dependencies, config_source).zip(tasks)?;
 
         // let tasks = project.tasks.validate(project_path)?;
 
@@ -128,12 +124,12 @@ impl Validator {
             .map(|path| path.validate_relative_to(relative_to))
             .collect_results();
 
-        let imports = self.record_errors(imports, &source_code);
+        let imports = self.record_errors(imports, source_code);
 
         let tasks = tasks
             .tasks
             .into_iter()
-            .map(|task| self.validate_task(task, &source_code))
+            .map(|task| self.validate_task(task, source_code))
             .collect::<Option<Vec<_>>>();
 
         let (imports, tasks) = imports.zip(tasks)?;
@@ -152,7 +148,7 @@ impl Validator {
             .map(|r| r.parse(&self.workspace_root))
             .collect_results();
 
-        let requires = self.record_errors(requires, &config_source)?;
+        let requires = self.record_errors(requires, config_source)?;
 
         Some(validated::TaskDefinition {
             name: task.name,
@@ -182,12 +178,6 @@ impl Validator {
             }
         }
     }
-}
-
-#[derive(thiserror::Error, miette::Diagnostic, Debug)]
-#[error("A task file failed validation")]
-pub enum TaskConfigError {
-    InvalidPaths(#[related] Vec<ConfigPathValidationError>),
 }
 
 #[cfg(test)]

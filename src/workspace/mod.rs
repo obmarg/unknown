@@ -1,7 +1,6 @@
 use std::collections::{BTreeSet, HashMap, HashSet};
 
 use miette::SourceSpan;
-use once_cell::sync::OnceCell;
 
 use crate::{
     config::{self, ConfigSource, TargetAnchor, ValidPath, WorkspaceRoot},
@@ -67,7 +66,6 @@ impl Workspace {
                 .collect(),
             root_path: workspace_file.workspace_root,
         };
-        let graph = WorkspaceGraph::new();
 
         Workspace {
             graph_: WorkspaceGraph::new(),
@@ -232,7 +230,7 @@ impl ProjectInfo {
             .graph()
             .project_tasks(&self.project_ref())
             .into_iter()
-            .map(|r| r.lookup(&workspace))
+            .map(|r| r.lookup(workspace))
             .collect()
     }
 

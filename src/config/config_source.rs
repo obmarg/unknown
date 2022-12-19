@@ -1,6 +1,5 @@
 use std::{fmt, sync::Arc};
 
-use camino::Utf8PathBuf;
 use miette::MietteSpanContents;
 
 #[derive(Clone)]

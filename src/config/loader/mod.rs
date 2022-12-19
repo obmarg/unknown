@@ -6,7 +6,7 @@ use super::{
     parsing::{parse_project_file, parse_task_file, parse_workspace_file, Validator},
     paths::{RelativePath, ValidPath, WorkspaceRoot},
     ConfigSource, UnvalidatedConfig, UnvalidatedProjectFile, UnvalidatedWorkspaceFile, ValidConfig,
-    ValidProjectFile, WorkspaceFile,
+    ValidProjectFile,
 };
 
 #[cfg(test)]
@@ -158,7 +158,6 @@ fn load_project_file(
         project_root,
         config,
         source,
-        project_file_path: project_file_path.clone(),
     })
 }
 

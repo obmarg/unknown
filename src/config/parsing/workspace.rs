@@ -1,5 +1,3 @@
-use crate::config::validated;
-
 use super::super::Glob;
 
 #[derive(knuffel::Decode, Debug)]

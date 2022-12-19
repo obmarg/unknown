@@ -1,9 +1,4 @@
-use crate::config::validated;
-
-use super::{
-    super::paths::{ConfigPath, ConfigPathValidationError, ValidPath},
-    tasks,
-};
+use super::{super::paths::ConfigPath, tasks};
 
 #[derive(knuffel::Decode, Debug)]
 pub struct ProjectDefinition {

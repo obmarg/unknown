@@ -1,11 +1,6 @@
-use std::str::FromStr;
-
 use crate::config::{ConfigSource, Glob};
 
-use super::super::{
-    paths::{ConfigPath, ConfigPathValidationError, ValidPath},
-    spanned::Spanned,
-};
+use super::super::{paths::ValidPath, spanned::Spanned};
 
 #[derive(Debug, Default)]
 pub struct TaskBlock {

@@ -1,9 +1,4 @@
-use crate::config::spanned::Spanned;
-
-use super::{
-    super::paths::{ConfigPath, ConfigPathValidationError, ValidPath},
-    tasks,
-};
+use super::{super::paths::ValidPath, tasks};
 
 #[derive(Debug)]
 pub struct ProjectDefinition {

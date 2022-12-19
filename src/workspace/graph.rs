@@ -3,12 +3,10 @@ use std::collections::{HashMap, HashSet};
 use petgraph::{
     algo::has_path_connecting,
     stable_graph::NodeIndex,
-    visit::{DfsPostOrder, EdgeFiltered, IntoNeighbors, IntoNeighborsDirected, Walker},
+    visit::{DfsPostOrder, EdgeFiltered, IntoNeighbors, Walker},
 };
 
-use crate::config::TargetSelector;
-
-use super::{PossibleTaskRef, ProjectInfo, ProjectRef, TaskInfo, TaskRef, WorkspaceInfo};
+use super::{PossibleTaskRef, ProjectInfo, ProjectRef, TaskInfo, TaskRef};
 
 type Graph = petgraph::Graph<WorkspaceNode, WorkspaceEdge>;
 

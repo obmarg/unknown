@@ -1,10 +1,7 @@
 use camino::Utf8PathBuf;
 use clap::Parser;
 
-use crate::{
-    config::{load_config_from_path, Validator},
-    workspace::Workspace,
-};
+use crate::{config::load_config_from_path, workspace::Workspace};
 
 mod changed_command;
 mod filters;
