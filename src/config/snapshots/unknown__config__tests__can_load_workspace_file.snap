@@ -1,27 +1,25 @@
 ---
 source: src/config/tests.rs
-expression: "parse_workspace_file(&Utf8PathBuf::from(\"blah/workspace.kdl\"),\n        &str_data).map_err(|e| miette::Report::new(e.0))"
+expression: parsed
 ---
-Ok(
-    WorkspaceDefinition {
-        name: "my-workspace",
-        project_paths: [
-            Glob(
-                Glob {
-                    glob: "**",
-                    re: "(?-u)^.*$",
-                    opts: GlobOptions {
-                        case_insensitive: false,
-                        literal_separator: false,
-                        backslash_escape: true,
-                    },
-                    tokens: Tokens(
-                        [
-                            RecursivePrefix,
-                        ],
-                    ),
+WorkspaceDefinition {
+    name: "my-workspace",
+    project_paths: [
+        Glob(
+            Glob {
+                glob: "**",
+                re: "(?-u)^.*$",
+                opts: GlobOptions {
+                    case_insensitive: false,
+                    literal_separator: false,
+                    backslash_escape: true,
                 },
-            ),
-        ],
-    },
-)
+                tokens: Tokens(
+                    [
+                        RecursivePrefix,
+                    ],
+                ),
+            },
+        ),
+    ],
+}

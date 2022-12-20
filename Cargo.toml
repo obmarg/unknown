@@ -32,6 +32,7 @@ tracing-subscriber = "0.3.16"
 
 [dev-dependencies]
 assert_matches = "1.5.0"
+assert_cmd = "2.0"
 insta = "1.19"
 maplit = "1.0"
 rstest = "0.15.0"
@@ -43,3 +44,9 @@ unindent = "0.1.10"
 # Disabling debug info speeds up builds a bunch,
 # and I don't rely on it for debugging that much.
 debug = 0
+
+[profile.dev.package.insta]
+opt-level = 3
+
+[profile.dev.package.similar]
+opt-level = 3

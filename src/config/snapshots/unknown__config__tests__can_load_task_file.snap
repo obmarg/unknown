@@ -1,19 +1,17 @@
 ---
 source: src/config/tests.rs
-expression: "parse_task_file(&Utf8PathBuf::from(\"blah/task.kdl\"),\n        &str_data).map_err(|e| miette::Report::new(e.0))"
+expression: parsed
 ---
-Ok(
-    TaskBlock {
-        imports: [],
-        tasks: [
-            TaskDefinition {
-                name: "xyz",
-                commands: [
-                    "cargo build",
-                ],
-                dependencies: [],
-                input_blocks: [],
-            },
-        ],
-    },
-)
+TaskBlock {
+    imports: [],
+    tasks: [
+        TaskDefinition {
+            name: "xyz",
+            commands: [
+                "cargo build",
+            ],
+            requires: [],
+            input_blocks: [],
+        },
+    ],
+}

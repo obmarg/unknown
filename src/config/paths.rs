@@ -6,19 +6,7 @@ use knuffel::{
 #[derive(Clone, Debug)]
 pub struct ConfigPath {
     span: miette::SourceSpan,
-    inner: PathInner,
-}
-
-#[derive(Clone, Debug)]
-pub enum PathInner {
-    Raw(Utf8PathBuf),
-    Normalised(ValidPath),
-}
-
-impl Default for PathInner {
-    fn default() -> Self {
-        PathInner::Raw(Utf8PathBuf::new())
-    }
+    inner: Utf8PathBuf,
 }
 
 impl ConfigPath {
@@ -26,33 +14,17 @@ impl ConfigPath {
     //     self.span.clone()
     // }
 
-    pub fn into_raw(self) -> Option<Utf8PathBuf> {
-        match self.inner {
-            PathInner::Raw(inner) => Some(inner),
-            PathInner::Normalised(_) => None,
-        }
-    }
-
-    pub fn into_normalised(self) -> Option<ValidPath> {
-        match self.inner {
-            PathInner::Raw(_) => None,
-            PathInner::Normalised(inner) => Some(inner),
-        }
+    pub fn into_inner(self) -> Utf8PathBuf {
+        self.inner
     }
 
     pub fn validate_relative_to(
-        &mut self,
+        self,
         relative_to: &ValidPath,
-    ) -> Result<(), ConfigPathValidationError> {
-        let PathInner::Raw(path) = std::mem::take(&mut self.inner) else {
-            panic!("Tried to normalise a ConfigPath twice");
-        };
-        self.inner = PathInner::Normalised(
-            relative_to
-                .join_and_validate(path)
-                .map_err(|e| ConfigPathValidationError::new(e, self.span))?,
-        );
-        Ok(())
+    ) -> Result<ValidPath, ConfigPathValidationError> {
+        relative_to
+            .join_and_validate(self.inner)
+            .map_err(|e| ConfigPathValidationError::new(e, self.span))
     }
 }
 
@@ -143,7 +115,7 @@ where
 
         Ok(ConfigPath {
             span: value.span().to_owned().into(),
-            inner: PathInner::Raw(path),
+            inner: path,
         })
     }
 }
@@ -193,6 +165,7 @@ impl WorkspaceRoot {
         WorkspaceRoot(path_buf)
     }
 
+    // TODO: A bad name this, think on it.
     pub fn normalise_absolute(&self, path: impl Into<Utf8PathBuf>) -> Result<ValidPath, PathError> {
         let path = path.into();
         let absolute = match path.is_absolute() {
@@ -452,9 +425,7 @@ mod tests {
                             7,
                         ),
                     },
-                    inner: Raw(
-                        "hello",
-                    ),
+                    inner: "hello",
                 },
                 ConfigPath {
                     span: SourceSpan {
@@ -465,9 +436,7 @@ mod tests {
                             11,
                         ),
                     },
-                    inner: Raw(
-                        "../hello/",
-                    ),
+                    inner: "../hello/",
                 },
                 ConfigPath {
                     span: SourceSpan {
@@ -478,9 +447,7 @@ mod tests {
                             8,
                         ),
                     },
-                    inner: Raw(
-                        "/hello",
-                    ),
+                    inner: "/hello",
                 },
             ],
         }

@@ -27,7 +27,7 @@ impl ChildExt for tokio::process::Child {
                         Ok(len) => {
                             output.stdout(&stdout_buf[0..len])
                         }
-                        Err(e) => {
+                        Err(_e) => {
                             // TODO: return actual errors...
                             return Err(());
                         }

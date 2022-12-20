@@ -227,7 +227,7 @@ fn find_tasks<'a>(
     let mut tasks = HashSet::new();
     for project in target_projects {
         for task_name in &task_list {
-            if let Some(task) = project.lookup_task(task_name) {
+            if let Some(task) = project.lookup_task(task_name, workspace) {
                 tasks.insert(task.task_ref());
                 let task_deps = graph.walk_task_dependencies(task.task_ref());
                 tracing::debug!(

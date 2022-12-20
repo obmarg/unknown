@@ -1,0 +1,52 @@
+---
+source: tests/config.rs
+expression: stderr.as_ref()
+---
+Error: 
+  × Errors occurred when validating your configuration
+
+Error: 
+  × Found a requires statement that doesn't match any tasks
+    ╭─[project.kdl:8:1]
+  8 │     task "build" {
+  9 │         requires "pre-build"
+    ·                  ─────┬─────
+    ·                       ╰── expected to find at least one task with this name in service-a
+ 10 │         requires "pre-build-2" in="self"
+    ╰────
+  help: Make sure you've specified the correct task name
+Error: 
+  × Found a requires statement that doesn't match any tasks
+    ╭─[project.kdl:9:1]
+  9 │         requires "pre-build"
+ 10 │         requires "pre-build-2" in="self"
+    ·                  ──────┬──────    ───┬──
+    ·                        │             ╰── this project does not have a task named pre-build-2
+    ·                        ╰── expected to find at least one task with this name
+ 11 │         requires "pre-build-3" in="^self"
+    ╰────
+  help: Make sure you've specified the correct project and task name
+Error: 
+  × Found a requires statement that doesn't match any tasks
+    ╭─[project.kdl:10:1]
+ 10 │         requires "pre-build-2" in="self"
+ 11 │         requires "pre-build-3" in="^self"
+    ·                  ──────┬──────    ───┬───
+    ·                        │             ╰── these projects do not have a task named pre-build-3
+    ·                        ╰── expected to find at least one task with this name
+ 12 │         requires "pre-build-4" in="other-project"
+    ╰────
+  help: Make sure you've specified the correct project and task name
+Error: 
+  × Found a requires statement that doesn't match any tasks
+    ╭─[project.kdl:11:1]
+ 11 │         requires "pre-build-3" in="^self"
+ 12 │         requires "pre-build-4" in="other-project"
+    ·                  ──────┬──────    ───────┬───────
+    ·                        │                 ╰── this project does not have a task named pre-build-4
+    ·                        ╰── expected to find at least one task with this name
+ 13 │     }
+    ╰────
+  help: Make sure you've specified the correct project and task name
+
+

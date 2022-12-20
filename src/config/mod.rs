@@ -1,20 +1,19 @@
+mod config_source;
 mod glob;
 mod loader;
 mod parsing;
 mod paths;
-mod project;
-mod tasks;
-mod workspace;
+mod spanned;
+mod validated;
 
 use self::paths::ConfigPath;
 pub use self::{
+    config_source::ConfigSource,
     glob::Glob,
     loader::{load_config_from_path, load_project_files},
-    parsing::ParsingError,
+    parsing::{ParsingError, Validator},
     paths::{ValidPath, WorkspaceRoot},
-    project::{DependencyBlock, ProjectDefinition},
-    tasks::*,
-    workspace::WorkspaceDefinition,
+    validated::{project::ProjectDefinition, tasks::*, workspace::WorkspaceDefinition},
 };
 
 #[cfg(test)]
@@ -22,42 +21,19 @@ mod tests;
 
 #[derive(Debug)]
 pub struct UnvalidatedConfig {
-    workspace_file: WorkspaceFile,
+    workspace_file: UnvalidatedWorkspaceFile,
     project_files: Vec<UnvalidatedProjectFile>,
+}
+
+impl UnvalidatedConfig {
+    pub fn workspace_root(&self) -> &WorkspaceRoot {
+        &self.workspace_file.workspace_root
+    }
 }
 
 #[derive(Debug, thiserror::Error, miette::Diagnostic)]
 #[error("Encountered some errors when validating config files")]
-struct ConfigValidationError {
-    #[related]
-    errors: Vec<miette::Report>,
-}
-
-impl UnvalidatedConfig {
-    pub fn validate(self) -> Result<ValidConfig, miette::Report> {
-        let mut project_files = Vec::with_capacity(self.project_files.len());
-        let mut errors = Vec::new();
-
-        for project_file in self.project_files {
-            match project_file.validate() {
-                Ok(mut project_file) => {
-                    project_file.import_tasks()?;
-                    project_files.push(project_file);
-                }
-                Err(e) => errors.push(e),
-            }
-        }
-
-        if !errors.is_empty() {
-            return Err(ConfigValidationError { errors }.into());
-        }
-
-        Ok(ValidConfig {
-            workspace_file: self.workspace_file,
-            project_files,
-        })
-    }
-}
+struct ConfigValidationError(#[related] Vec<miette::Report>);
 
 #[derive(Debug)]
 pub struct ValidConfig {
@@ -66,54 +42,40 @@ pub struct ValidConfig {
 }
 
 #[derive(Debug)]
+pub struct UnvalidatedWorkspaceFile {
+    pub workspace_root: WorkspaceRoot,
+    config: parsing::WorkspaceDefinition,
+    source: ConfigSource,
+}
+
+#[derive(Debug)]
 pub struct WorkspaceFile {
     pub workspace_root: WorkspaceRoot,
-    pub config: WorkspaceDefinition,
+    pub config: validated::WorkspaceDefinition,
+    pub source: ConfigSource,
 }
 
 #[derive(Debug)]
 pub struct UnvalidatedProjectFile {
     pub project_root: ValidPath,
-    project_file_path: ValidPath,
-    config: ProjectDefinition,
-    source_text: String,
+    config: parsing::ProjectDefinition,
+    source: ConfigSource,
 }
 
 impl UnvalidatedProjectFile {
     pub fn unvalidated_dependency_paths(&self) -> impl Iterator<Item = &ConfigPath> {
         self.config.dependencies.projects.iter()
     }
-
-    pub fn validate(mut self) -> Result<ValidProjectFile, miette::Report> {
-        self.config
-            .validate_and_normalise(&self.project_root)
-            .map_err(|e| {
-                miette::Report::new(e).with_source_code(miette::NamedSource::new(
-                    self.project_file_path.as_subpath(),
-                    self.source_text,
-                ))
-            })?;
-
-        Ok(ValidProjectFile {
-            project_root: self.project_root,
-            config: self.config,
-        })
-    }
 }
 
 #[derive(Debug)]
 pub struct ValidProjectFile {
     pub project_root: ValidPath,
-    pub config: ProjectDefinition,
-}
-
-impl ValidProjectFile {
-    pub fn import_tasks(&mut self) -> Result<(), miette::Report> {
-        loader::import_tasks(self)
-    }
+    pub config: validated::ProjectDefinition,
+    pub source: ConfigSource,
 }
 
 #[derive(Debug)]
 pub struct TaskFile {
-    pub config: tasks::TaskBlock,
+    pub config: validated::TaskBlock,
 }

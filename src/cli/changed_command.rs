@@ -40,7 +40,7 @@ pub fn run(workspace: Workspace, opts: ChangedOpts) -> miette::Result<()> {
         .flat_map(|file| {
             workspace
                 .projects()
-                .filter(|project| file.starts_with(&project.root.full_path()))
+                .filter(|project| file.starts_with(project.root.full_path()))
                 .collect::<Vec<_>>()
         })
         .collect::<HashSet<_>>();

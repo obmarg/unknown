@@ -6,12 +6,12 @@ use super::*;
 
 #[test]
 fn snapshot_sample_monorepo() {
-    let config = load_config_from_path("src/workspace/test-data/".into())
-        .unwrap()
-        .validate()
-        .unwrap();
+    let config = load_config_from_path("src/workspace/test-data/".into()).unwrap();
 
-    insta::assert_debug_snapshot!(Workspace::new(config.workspace_file, config.project_files))
+    let mut workspace = Workspace::new(config.workspace_file);
+    workspace.add_projects(config.project_files).unwrap();
+
+    insta::assert_debug_snapshot!(workspace)
 }
 
 #[test]
@@ -21,14 +21,14 @@ fn test_task_ref_direct_dependencies() {
     let build_lib_ref = workspace
         .project_at_path("projects/a-lib")
         .unwrap()
-        .lookup_task("build")
+        .lookup_task("build", &workspace)
         .unwrap()
         .task_ref();
 
     let build_project_ref = workspace
         .project_at_path("projects/a-service")
         .unwrap()
-        .lookup_task("build")
+        .lookup_task("build", &workspace)
         .unwrap()
         .task_ref();
 
@@ -39,10 +39,9 @@ fn test_task_ref_direct_dependencies() {
 }
 
 fn a_workspace() -> Workspace {
-    let config = load_config_from_path("src/workspace/test-data/".into())
-        .unwrap()
-        .validate()
-        .unwrap();
+    let config = load_config_from_path("src/workspace/test-data/".into()).unwrap();
 
-    Workspace::new(config.workspace_file, config.project_files)
+    let mut workspace = Workspace::new(config.workspace_file);
+    workspace.add_projects(config.project_files).unwrap();
+    workspace
 }

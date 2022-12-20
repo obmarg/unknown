@@ -1,6 +1,6 @@
 ---
 source: src/config/tests.rs
-expression: "parse_project_file(&Utf8PathBuf::from(\"blah/project.kdl\"),\n        &dbg!(str_data)).map_err(|e| miette::Report::new(e.0))"
+expression: "parse_project_file(&source).map_err(|e| miette::Report::new(e.0))"
 ---
 Ok(
     ProjectDefinition {
@@ -16,9 +16,7 @@ Ok(
                             18,
                         ),
                     },
-                    inner: Raw(
-                        "../other_project",
-                    ),
+                    inner: "../other_project",
                 },
             ],
         },
@@ -33,9 +31,7 @@ Ok(
                             11,
                         ),
                     },
-                    inner: Raw(
-                        "/.tasks/*",
-                    ),
+                    inner: "/.tasks/*",
                 },
                 ConfigPath {
                     span: SourceSpan {
@@ -46,9 +42,7 @@ Ok(
                             16,
                         ),
                     },
-                    inner: Raw(
-                        ".tasks/my_task",
-                    ),
+                    inner: ".tasks/my_task",
                 },
             ],
             tasks: [
@@ -57,13 +51,12 @@ Ok(
                     commands: [
                         "cargo build",
                     ],
-                    dependencies: [
-                        TaskDependency {
+                    requires: [
+                        TaskRequires {
                             task: "generate",
-                            for_project_deps: Some(
-                                true,
+                            target: Some(
+                                "^self",
                             ),
-                            include_this_package: None,
                         },
                     ],
                     input_blocks: [

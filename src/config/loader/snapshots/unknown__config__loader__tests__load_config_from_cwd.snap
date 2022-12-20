@@ -1,6 +1,6 @@
 ---
 source: src/config/loader/tests.rs
-expression: "load_config_from_path(\"sample-monorepo/\".into()).unwrap().validate().unwrap()"
+expression: "load_config_from_path(\"sample-monorepo/\".into()).unwrap()"
 ---
 ValidConfig {
     workspace_file: WorkspaceFile {
@@ -28,6 +28,10 @@ ValidConfig {
                 ),
             ],
         },
+        source: ConfigSource {
+            filename: "workspace.kdl",
+            ..
+        },
     },
     project_files: [
         ValidProjectFile {
@@ -39,28 +43,14 @@ ValidConfig {
             },
             config: ProjectDefinition {
                 project: "a-service",
-                dependencies: DependencyBlock {
-                    projects: [
-                        ConfigPath {
-                            span: SourceSpan {
-                                offset: SourceOffset(
-                                    96,
-                                ),
-                                length: SourceOffset(
-                                    10,
-                                ),
-                            },
-                            inner: Normalised(
-                                ValidPath {
-                                    workspace_root: WorkspaceRoot(
-                                        "/Users/graeme/src/unknown/sample-monorepo/",
-                                    ),
-                                    subpath: "projects/a-lib",
-                                },
-                            ),
-                        },
-                    ],
-                },
+                dependencies: [
+                    ValidPath {
+                        workspace_root: WorkspaceRoot(
+                            "/Users/graeme/src/unknown/sample-monorepo/",
+                        ),
+                        subpath: "projects/a-lib",
+                    },
+                ],
                 tasks: TaskBlock {
                     imports: [],
                     tasks: [
@@ -69,27 +59,38 @@ ValidConfig {
                             commands: [
                                 "echo \"build-a-service\"",
                             ],
-                            dependencies: [
-                                TaskDependency {
+                            requires: [
+                                TaskRequires {
                                     task: "build",
-                                    for_project_deps: Some(
-                                        true,
+                                    target: Some(
+                                        DependenciesOfCurrent,
                                     ),
-                                    include_this_package: None,
                                 },
                             ],
                             input_blocks: [],
+                            source: ConfigSource {
+                                filename: "projects/a-service/project.kdl",
+                                ..
+                            },
                         },
                         TaskDefinition {
                             name: "bye",
                             commands: [
                                 "echo \"bye\"",
                             ],
-                            dependencies: [],
+                            requires: [],
                             input_blocks: [],
+                            source: ConfigSource {
+                                filename: "projects/a-service/bye.nabs",
+                                ..
+                            },
                         },
                     ],
                 },
+            },
+            source: ConfigSource {
+                filename: "projects/a-service/project.kdl",
+                ..
             },
         },
         ValidProjectFile {
@@ -101,9 +102,7 @@ ValidConfig {
             },
             config: ProjectDefinition {
                 project: "a-lib",
-                dependencies: DependencyBlock {
-                    projects: [],
-                },
+                dependencies: [],
                 tasks: TaskBlock {
                     imports: [],
                     tasks: [
@@ -112,27 +111,43 @@ ValidConfig {
                             commands: [
                                 "echo \"build-a-lib\"",
                             ],
-                            dependencies: [],
+                            requires: [],
                             input_blocks: [],
+                            source: ConfigSource {
+                                filename: "projects/a-lib/project.kdl",
+                                ..
+                            },
                         },
                         TaskDefinition {
                             name: "hello",
                             commands: [
                                 "echo \"hello\"",
                             ],
-                            dependencies: [],
+                            requires: [],
                             input_blocks: [],
+                            source: ConfigSource {
+                                filename: "tasks/hello.nabs",
+                                ..
+                            },
                         },
                         TaskDefinition {
                             name: "hello2",
                             commands: [
                                 "echo \"hello\"",
                             ],
-                            dependencies: [],
+                            requires: [],
                             input_blocks: [],
+                            source: ConfigSource {
+                                filename: "tasks/hello2.nabs",
+                                ..
+                            },
                         },
                     ],
                 },
+            },
+            source: ConfigSource {
+                filename: "projects/a-lib/project.kdl",
+                ..
             },
         },
     ],

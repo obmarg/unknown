@@ -14,10 +14,10 @@ impl TestFiles {
         }
     }
 
-    pub fn add_file<Name: ?Sized + AsRef<str>, Contents: ?Sized + AsRef<str>>(
+    pub fn add_file<Name: ?Sized + AsRef<str>, Contents: AsRef<str>>(
         &mut self,
         name: &Name,
-        contents: &Contents,
+        contents: Contents,
     ) {
         let path = Utf8PathBuf::from(name);
         assert!(path.is_relative());
@@ -31,10 +31,10 @@ impl TestFiles {
         std::fs::write(path, contents).expect("to be able to write a file")
     }
 
-    pub fn with_file<Name: ?Sized + AsRef<str>, Contents: ?Sized + AsRef<str>>(
+    pub fn with_file<Name: ?Sized + AsRef<str>, Contents: AsRef<str>>(
         mut self,
         name: &Name,
-        contents: &Contents,
+        contents: Contents,
     ) -> Self {
         self.add_file(name, contents);
         self

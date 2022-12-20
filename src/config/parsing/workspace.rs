@@ -1,4 +1,4 @@
-use super::Glob;
+use super::super::Glob;
 
 #[derive(knuffel::Decode, Debug)]
 pub struct WorkspaceDefinition {
@@ -8,3 +8,7 @@ pub struct WorkspaceDefinition {
     #[knuffel(children(name = "project_path"), unwrap(argument))]
     pub project_paths: Vec<Glob>,
 }
+
+#[derive(thiserror::Error, miette::Diagnostic, Debug)]
+#[error("Workspace failed validation")]
+pub enum WorkspaceValidationError {}

@@ -1,6 +1,15 @@
 use camino::{Utf8Path, Utf8PathBuf};
 
-use super::{project::ProjectDefinition, tasks::*, workspace::WorkspaceDefinition};
+mod project;
+mod tasks;
+mod validation;
+mod workspace;
+
+pub(super) use self::{project::ProjectDefinition, tasks::*, workspace::WorkspaceDefinition};
+
+pub use validation::Validator;
+
+use super::ConfigSource;
 
 #[derive(Debug, thiserror::Error)]
 #[error("Error parsing {1}")]
@@ -40,17 +49,10 @@ impl miette::Diagnostic for ParsingError {
     }
 }
 
-pub fn parse_project_file(
-    path: &Utf8Path,
-    contents: &str,
-) -> Result<ProjectDefinition, ParsingError> {
-    // TODO: Should probably make sure this is the relative path from workspace...
-    let config = knuffel::parse::<ProjectDefinition>(
-        path.file_name()
-            .expect("project file path to have a filename"),
-        contents,
-    )
-    .map_err(|e| ParsingError(e, path.to_owned()))?;
+pub fn parse_project_file(config: &ConfigSource) -> Result<ProjectDefinition, ParsingError> {
+    let filename = config.filename();
+    let config = knuffel::parse::<ProjectDefinition>(filename, config.contents())
+        .map_err(|e| ParsingError(e, filename.to_owned().into()))?;
 
     // TODO: At some point want to validate the data in the file.
     // e.g. names can't have commas or slashes in them etc.
@@ -58,7 +60,6 @@ pub fn parse_project_file(
     Ok(config)
 }
 
-// TODO: suspect these functions could be private and just expose the loader...
 pub fn parse_workspace_file(
     path: &Utf8Path,
     contents: &str,
@@ -92,3 +93,4 @@ pub fn parse_task_file(path: &Utf8Path, contents: &str) -> Result<TaskBlock, Par
 
     Ok(config)
 }
+

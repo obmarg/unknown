@@ -57,11 +57,13 @@ fn load_workspace() -> Result<Workspace, miette::Report> {
             std::env::current_dir().expect("couldn't determine current directory"),
         )
         .expect("the current directory to be a utf8 path"),
-    )?
-    .validate()?;
+    )?;
 
-    // TODO: workspace::new should return an error probably
-    Ok(Workspace::new(config.workspace_file, config.project_files))
+    let mut workspace = Workspace::new(config.workspace_file);
+
+    workspace.add_projects(config.project_files)?;
+
+    Ok(workspace)
 }
 
 #[cfg(test)]

@@ -32,7 +32,7 @@ tasks {
         // Not sure about this syntax, but want a way to specify which
         // tasks should be run before this, and for what part (if any)
         // of the project dependency tree
-        dependency task="generate" for-project-deps=true
+        requires "generate" in="^self"
 
         // Of course that's where the hard part of the problem is.
         // Can't determine whether a task needs to be re-run if we don't
