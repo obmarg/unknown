@@ -1,0 +1,19 @@
+---
+source: tests/config.rs
+expression: stderr.as_ref()
+---
+Error: 
+  × Errors occurred when validating your configuration
+
+Error: 
+  × Couldn't find a project at other-project
+   ╭─[project.kdl:3:1]
+ 3 │ dependencies {
+ 4 │     project "other-project"
+   ·             ───────┬───────
+   ·                    ╰── Couldn't find this project
+ 5 │ }
+   ╰────
+  help: Make sure there's a project.kdl in other-project
+
+

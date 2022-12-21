@@ -92,16 +92,22 @@ impl Workspace {
         self.project_map.reserve(project_files.len());
 
         let mut tasks_to_process = Vec::new();
+        let mut errors = Vec::new();
 
-        for project_file in project_files {
+        'outer: for project_file in project_files {
             let project_ref = ProjectRef(project_file.project_root.clone());
 
             let mut dependencies = Vec::new();
             for path in project_file.config.dependencies {
                 if !project_paths.contains(&path) {
-                    panic!("Unknown project: {path}");
+                    errors.push(DynDiagnostic::new(UnknownProjectError {
+                        span: path.span,
+                        path: path.to_string(),
+                        source_code: project_file.source,
+                    }));
+                    continue 'outer;
                 }
-                dependencies.push(ProjectRef(path));
+                dependencies.push(ProjectRef(path.into_inner()));
             }
 
             for task in project_file.config.tasks.tasks {
@@ -127,6 +133,10 @@ impl Workspace {
                     root: project_file.project_root,
                 },
             );
+        }
+
+        if !errors.is_empty() {
+            return Err(ConfigError { errors });
         }
 
         self.graph_.add_projects(&self.project_map);
@@ -192,6 +202,18 @@ impl Workspace {
         }
         builder.build().unwrap()
     }
+}
+
+#[derive(thiserror::Error, miette::Diagnostic, Debug)]
+#[error("Couldn't find a project at {path}")]
+#[diagnostic(help("Make sure there's a project.kdl in {path}"))]
+struct UnknownProjectError {
+    path: String,
+    #[label = "Couldn't find this project"]
+    span: SourceSpan,
+
+    #[source_code]
+    source_code: ConfigSource,
 }
 
 impl ProjectRef {

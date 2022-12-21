@@ -1,3 +1,5 @@
+use crate::config::spanned::Spanned;
+
 use super::{super::paths::ConfigPath, tasks};
 
 #[derive(knuffel::Decode, Debug)]
@@ -15,5 +17,5 @@ pub struct ProjectDefinition {
 #[derive(knuffel::Decode, Debug, Default)]
 pub struct DependencyBlock {
     #[knuffel(children(name = "project"), unwrap(argument))]
-    pub(in crate::config) projects: Vec<ConfigPath>,
+    pub(in crate::config) projects: Vec<Spanned<ConfigPath>>,
 }

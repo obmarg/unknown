@@ -1,0 +1,5 @@
+project "missing-project-file"
+
+dependencies {
+    project "other-project"
+}

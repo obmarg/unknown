@@ -64,7 +64,7 @@ pub struct UnvalidatedProjectFile {
 
 impl UnvalidatedProjectFile {
     pub fn unvalidated_dependency_paths(&self) -> impl Iterator<Item = &ConfigPath> {
-        self.config.dependencies.projects.iter()
+        self.config.dependencies.projects.iter().map(|p| p.as_ref())
     }
 }
 

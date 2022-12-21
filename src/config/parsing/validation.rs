@@ -1,8 +1,8 @@
 use crate::{
     config::{
-        parsing, validated, ConfigSource, UnvalidatedConfig, UnvalidatedProjectFile,
-        UnvalidatedWorkspaceFile, ValidConfig, ValidPath, ValidProjectFile, WorkspaceFile,
-        WorkspaceRoot,
+        parsing, paths::ConfigPathValidationError, spanned::WithSpan, validated, ConfigSource,
+        UnvalidatedConfig, UnvalidatedProjectFile, UnvalidatedWorkspaceFile, ValidConfig,
+        ValidPath, ValidProjectFile, WorkspaceFile, WorkspaceRoot,
     },
     diagnostics::{CollectResults, ConfigError, DynDiagnostic},
 };
@@ -88,7 +88,14 @@ impl Validator {
             .dependencies
             .projects
             .into_iter()
-            .map(|p| p.validate_relative_to(project_path))
+            .map(|p| {
+                let span = p.span;
+                Ok::<_, ConfigPathValidationError>(
+                    p.into_inner()
+                        .validate_relative_to(project_path)?
+                        .with_span(span),
+                )
+            })
             .collect_results();
 
         let tasks = self.validate_tasks(project.tasks, project_path, config_source);

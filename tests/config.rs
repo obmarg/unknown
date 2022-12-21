@@ -21,6 +21,11 @@ fn task_require_unknown_tasks() {
     test_failing_config("task_require_unknown_tasks");
 }
 
+#[test]
+fn missing_project_file() {
+    test_failing_config("missing_project_file");
+}
+
 fn test_failing_config(name: &str) {
     let mut cmd = Command::cargo_bin("unknown").unwrap();
     cmd.arg("projects");

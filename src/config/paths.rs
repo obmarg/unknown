@@ -300,7 +300,7 @@ impl ValidPath {
         self.workspace_root.0.join(&self.subpath)
     }
 
-    pub fn as_subpath(&self) -> &Utf8PathBuf {
+    pub fn as_subpath(&self) -> &Utf8Path {
         &self.subpath
     }
 
