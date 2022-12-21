@@ -9,8 +9,9 @@ use crate::{
     diagnostics::{CollectResults, ConfigError, DynDiagnostic},
 };
 
-use self::graph::WorkspaceGraph;
+use self::{exclusions::calculate_exclusions, graph::WorkspaceGraph};
 
+mod exclusions;
 mod graph;
 
 #[cfg(test)]
@@ -91,6 +92,12 @@ impl Workspace {
 
         self.project_map.reserve(project_files.len());
 
+        let mut exclusions = calculate_exclusions(
+            project_files
+                .iter()
+                .map(|p| (ProjectRef(p.project_root.clone()), &p.project_root)),
+        );
+
         let mut tasks_to_process = Vec::new();
         let mut errors = Vec::new();
 
@@ -131,6 +138,7 @@ impl Workspace {
                     name: project_file.config.project.clone(),
                     dependencies,
                     root: project_file.project_root,
+                    path_exclusions: exclusions.remove(&project_ref).unwrap(),
                 },
             );
         }
@@ -236,6 +244,7 @@ pub struct ProjectInfo {
     pub name: String,
     pub dependencies: Vec<ProjectRef>,
     pub root: ValidPath,
+    pub path_exclusions: Vec<ValidPath>,
 }
 
 impl ProjectInfo {

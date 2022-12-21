@@ -1,6 +1,4 @@
-use std::path::PathBuf;
-
-use camino::Utf8Path;
+use camino::{Utf8Path, Utf8PathBuf};
 use thiserror::Error;
 
 pub type Commit = String;
@@ -23,17 +21,17 @@ pub enum GitError {
     Unknown(String),
 }
 
-pub fn repo_root() -> Result<PathBuf, GitError> {
-    real_impl().repo_root().map(PathBuf::from)
+pub fn repo_root() -> Result<Utf8PathBuf, GitError> {
+    real_impl().repo_root().map(Utf8PathBuf::from)
 }
 
-pub fn files_changed(mode: Mode) -> Result<Vec<PathBuf>, GitError> {
+pub fn files_changed(mode: Mode) -> Result<Vec<Utf8PathBuf>, GitError> {
     let paths = real_impl().diff(mode, vec![])?;
 
-    Ok(paths.into_iter().map(PathBuf::from).collect())
+    Ok(paths.into_iter().map(Utf8PathBuf::from).collect())
 }
 
-pub fn have_files_changed(since: String, path: camino::Utf8PathBuf) -> Result<bool, GitError> {
+pub fn have_files_changed(since: String, path: Utf8PathBuf) -> Result<bool, GitError> {
     let paths = real_impl().diff(Mode::Main(since), vec![path.to_string()])?;
 
     Ok(!paths.is_empty())
@@ -133,6 +131,7 @@ where
                 files
                     .trim_end()
                     .split('\n')
+                    .filter(|f| !f.is_empty())
                     .map(|f| f.to_string())
                     .collect()
             })

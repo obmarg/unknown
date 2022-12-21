@@ -150,6 +150,12 @@ impl From<WorkspaceRoot> for ValidPath {
     }
 }
 
+impl PartialEq<Utf8Path> for WorkspaceRoot {
+    fn eq(&self, other: &Utf8Path) -> bool {
+        self.0 == other
+    }
+}
+
 impl WorkspaceRoot {
     pub fn new(path: impl Into<Utf8PathBuf>) -> Self {
         let mut path_buf = path.into();
@@ -322,6 +328,25 @@ impl ValidPath {
     // Normalises the provided path relative to self (or the root of the repo if path is absolute)
     fn join_and_validate(&self, path: impl Into<Utf8PathBuf>) -> Result<ValidPath, PathError> {
         self.join(path)?.validate()
+    }
+
+    /// Determines whether `base` is a prefix of `self`.
+    ///
+    /// Only considers whole path components to match.
+    pub fn starts_with(&self, base: &ValidPath) -> bool {
+        self.workspace_root == base.workspace_root && self.subpath.starts_with(&base.subpath)
+    }
+
+    #[cfg(test)]
+    /// A test only constructor function for creating invalid ValidPaths.
+    pub fn new_for_tests(
+        workspace_root: &WorkspaceRoot,
+        subpath: impl Into<Utf8PathBuf>,
+    ) -> ValidPath {
+        ValidPath {
+            workspace_root: workspace_root.clone(),
+            subpath: subpath.into(),
+        }
     }
 }
 
