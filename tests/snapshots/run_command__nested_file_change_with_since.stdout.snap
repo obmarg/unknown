@@ -1,0 +1,6 @@
+---
+source: tests/run_command.rs
+expression: "workspace.run([\"run\", \"build\", \"--since\", \"HEAD\"])"
+---
+ nested | build | "Building Nested"
+

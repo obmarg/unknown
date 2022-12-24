@@ -18,7 +18,7 @@ mod graph;
 mod tests;
 
 use camino::Utf8Path;
-use globset::Glob;
+use globset::{Glob, GlobSet};
 
 pub struct Workspace {
     pub info: WorkspaceInfo,
@@ -242,7 +242,7 @@ impl TaskRef {
 #[derive(Debug, Hash, PartialEq, Eq)]
 pub struct ProjectInfo {
     pub name: String,
-    pub dependencies: Vec<ProjectRef>,
+    dependencies: Vec<ProjectRef>,
     pub root: ValidPath,
     pub path_exclusions: Vec<ValidPath>,
 }
@@ -508,5 +508,18 @@ impl TaskInputs {
             self.commands.push(_command.to_owned());
             todo!("Haven't implemented command input support yet");
         }
+    }
+
+    pub fn globset(&self) -> Option<GlobSet> {
+        if self.paths.is_empty() {
+            return None;
+        }
+
+        let mut builder = globset::GlobSetBuilder::new();
+        for glob in &self.paths {
+            builder.add(glob.clone());
+        }
+
+        Some(builder.build().expect("the globset build to succeed"))
     }
 }

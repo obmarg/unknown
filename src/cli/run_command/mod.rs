@@ -1,5 +1,5 @@
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{BTreeSet, HashMap, HashSet},
     sync::Arc,
 };
 
@@ -37,6 +37,9 @@ pub struct RunOpts {
     /// Defaults to changes since the last run of a task (or will once that's implemented)
     #[clap(long)]
     pub since: Option<String>,
+
+    #[clap(long)]
+    pub plan_only: bool,
 }
 
 pub fn run(workspace: Workspace, opts: RunOpts) -> miette::Result<()> {
@@ -174,8 +177,6 @@ fn infer_filter(workspace_root: &Utf8Path, globset: &GlobSet) -> Option<ProjectF
 fn filter_projects(workspace: &Workspace, filter: Option<ProjectFilter>) -> HashSet<&ProjectInfo> {
     let specs = filter.map(|pf| pf.specs).unwrap_or_default();
     if specs.is_empty() {
-        // TODO: If we're being run from within a project automatically filter to
-        // that project.
         return workspace.projects().collect();
     }
 
@@ -189,7 +190,19 @@ fn filter_projects(workspace: &Workspace, filter: Option<ProjectFilter>) -> Hash
                 super::filters::Matcher::Name(name) => project.name == *name,
             };
             if matches {
-                current_selection.insert(project);
+                let mut to_walk = vec![project];
+                while let Some(project) = to_walk.pop() {
+                    if current_selection.contains(project) {
+                        continue;
+                    }
+                    current_selection.insert(project);
+                    let dependencies = project
+                        .direct_dependencies::<Vec<_>>(workspace)
+                        .into_iter()
+                        .map(|project_ref| project_ref.lookup(workspace));
+
+                    to_walk.extend(dependencies);
+                }
             }
         }
 
@@ -280,4 +293,27 @@ enum TaskOutcome {
     Skipped,
     Succesful,
     Failed(TaskError),
+}
+
+impl serde::Serialize for TaskAndDeps {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        #[derive(serde::Serialize)]
+        struct Serializable<'a> {
+            task: (&'a str, &'a str),
+            dependencies: BTreeSet<(&'a str, &'a str)>,
+        }
+
+        Serializable {
+            task: (self.task_ref.project().as_str(), self.task_ref.task_name()),
+            dependencies: self
+                .deps
+                .iter()
+                .map(|task_ref| (task_ref.project().as_str(), task_ref.task_name()))
+                .collect(),
+        }
+        .serialize(serializer)
+    }
 }

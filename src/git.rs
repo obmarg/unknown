@@ -25,16 +25,10 @@ pub fn repo_root() -> Result<Utf8PathBuf, GitError> {
     real_impl().repo_root().map(Utf8PathBuf::from)
 }
 
-pub fn files_changed(mode: Mode) -> Result<Vec<Utf8PathBuf>, GitError> {
-    let paths = real_impl().diff(mode, vec![])?;
+pub fn files_changed(mode: Mode, path: Option<Utf8PathBuf>) -> Result<Vec<Utf8PathBuf>, GitError> {
+    let paths = real_impl().diff(mode, path.into_iter().map(|p| p.into()).collect())?;
 
     Ok(paths.into_iter().map(Utf8PathBuf::from).collect())
-}
-
-pub fn have_files_changed(since: String, path: Utf8PathBuf) -> Result<bool, GitError> {
-    let paths = real_impl().diff(Mode::Main(since), vec![path.to_string()])?;
-
-    Ok(!paths.is_empty())
 }
 
 pub fn sparse_checkout_init() -> Result<(), GitError> {

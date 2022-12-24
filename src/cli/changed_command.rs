@@ -34,7 +34,7 @@ pub enum Format {
 }
 
 pub fn run(workspace: Workspace, opts: ChangedOpts) -> miette::Result<()> {
-    let files_changed = git::files_changed(git::Mode::Feature(opts.since))?;
+    let files_changed = git::files_changed(git::Mode::Feature(opts.since), None)?;
 
     let repo_root = git::repo_root().expect("need to find repo root");
     let repo_root = repo_root.as_path();

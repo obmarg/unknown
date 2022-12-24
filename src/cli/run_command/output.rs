@@ -61,7 +61,7 @@ impl CommandOutput {
         color: Color,
     ) -> CommandOutput {
         let annotation = format!(
-            "{:>project_width$} | {:<task_width$} ",
+            "{:>project_width$} | {:<task_width$} | ",
             task.project_name,
             task.name,
             project_width = max_project_len,

@@ -8,8 +8,9 @@ type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 fn test_changed_command() -> Result<()> {
     let mut temp_dir = TempDir::new()?;
 
-    temp_dir = temp_dir.into_persistent();
-    println!("Not So Temp Dir: {temp_dir:?}");
+    // Note: Uncomment these if you're debugging
+    // temp_dir = temp_dir.into_persistent();
+    // println!("Not So Temp Dir: {temp_dir:?}");
 
     temp_dir
         .child("workspace.kdl")

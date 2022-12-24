@@ -6,7 +6,7 @@ mod tests;
 use std::io::Read;
 
 use camino::Utf8PathBuf;
-use globset::{Glob, GlobSetBuilder};
+use globset::{Glob, GlobSet, GlobSetBuilder};
 use rayon::prelude::*;
 
 pub use registry::{HashRegistry, HashRegistryLoadError};
@@ -38,7 +38,12 @@ pub fn hash_task_inputs(project: &ProjectInfo, task: &TaskInfo) -> Result<Option
     }
 
     let mut hashes = Vec::with_capacity(task.inputs.len());
-    hash_file_inputs(&project.root, &task.inputs.paths, &mut hashes)?;
+    hash_file_inputs(
+        &project.root,
+        task.inputs.globset(),
+        &project.path_exclusions,
+        &mut hashes,
+    )?;
     hash_env_vars(project, task, &mut hashes)?;
     hash_commands(project, task, &mut hashes)?;
     // TODO: also need to hash the task/project itself somehow...
@@ -54,34 +59,47 @@ pub fn hash_task_inputs(project: &ProjectInfo, task: &TaskInfo) -> Result<Option
 
 fn hash_file_inputs(
     project_root: &ValidPath,
-    globs: &[Glob],
+    globset: Option<GlobSet>,
+    exclude_paths: &[ValidPath],
     hashes: &mut Vec<blake3::Hash>,
 ) -> Result<(), HashError> {
-    if globs.is_empty() {
-        return Ok(());
-    }
+    let Some(globset) = globset else { return Ok(()); };
 
-    // TODO: Could look into using an ignore based parallel iterator here.
-    // Or could maybe use rayon?  Not sure.
+    let project_full_path = project_root.full_path();
+    let mut walk = ignore::WalkBuilder::new(&project_full_path);
+    walk.hidden(false);
 
-    let mut builder = GlobSetBuilder::new();
-    for glob in globs {
-        builder.add(glob.clone());
+    if !exclude_paths.is_empty() {
+        let mut overrides = ignore::overrides::OverrideBuilder::new(project_root.full_path());
+        for exclude in exclude_paths {
+            overrides
+                .add(&format!(
+                    "!{}/",
+                    (exclude.as_subpath())
+                        .strip_prefix(project_root.as_subpath())
+                        .unwrap()
+                ))
+                .unwrap();
+        }
+        walk.overrides(overrides.build().unwrap());
     }
-    let globset = builder.build().expect("the globset build to succeed");
 
     // TODO: Check if files is always sorted.
     // If it's not we'll need to sort it so we get consistent hashes.
-    let files = ignore::WalkBuilder::new(project_root.full_path())
-        .hidden(false)
+    let files = walk
         .build()
         .filter_map(|f| f.ok())
-        .filter(|entry| globset.is_match(entry.path()))
+        .filter(|entry| {
+            let path_ = entry.path().strip_prefix(&project_full_path).unwrap();
+            globset.is_match(path_)
+        })
         .filter(|f| f.path().is_file())
         .map(|f| Utf8PathBuf::try_from(f.into_path()))
         .collect::<Result<Vec<_>, _>>()?;
 
-    files
+    tracing::debug!(?files, "Files to hash");
+
+    let file_hashes = files
         .into_par_iter()
         .map(|path| {
             let mut buffer = vec![0; 2048];
@@ -96,7 +114,9 @@ fn hash_file_inputs(
             }
             hasher.finalize()
         })
-        .collect_into_vec(hashes);
+        .collect::<Vec<_>>();
+
+    hashes.extend(file_hashes);
 
     Ok(())
 }

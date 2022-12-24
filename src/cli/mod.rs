@@ -36,7 +36,7 @@ pub enum Command {
 }
 
 pub fn run() -> miette::Result<()> {
-    tracing_subscriber::fmt::init();
+    setup_tracing();
 
     let opts = Cli::parse();
     let workspace = load_workspace()?;
@@ -64,6 +64,14 @@ fn load_workspace() -> Result<Workspace, miette::Report> {
     workspace.add_projects(config.project_files)?;
 
     Ok(workspace)
+}
+
+fn setup_tracing() {
+    tracing_subscriber::fmt()
+        .with_env_filter(tracing_subscriber::filter::EnvFilter::from_env(
+            "UNKNOWN_LOG",
+        ))
+        .init();
 }
 
 #[cfg(test)]

@@ -1,0 +1,5 @@
+---
+source: tests/run_command.rs
+expression: stdout
+---
+

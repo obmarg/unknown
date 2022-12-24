@@ -1,4 +1,4 @@
-use std::{collections::HashMap, process::Stdio, sync::Arc};
+use std::{collections::HashMap, fmt, process::Stdio, sync::Arc};
 
 use futures::{stream::FuturesUnordered, StreamExt};
 use tokio::task::{block_in_place, JoinHandle};
@@ -117,6 +117,15 @@ enum OutcomeSummary {
     SomeChange,
 }
 
+impl fmt::Display for OutcomeSummary {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            OutcomeSummary::NoChange => write!(f, "no changes"),
+            OutcomeSummary::SomeChange => write!(f, "some changes"),
+        }
+    }
+}
+
 #[tracing::instrument(
     fields(task = %task.task_ref())
     skip(task, workspace, output, hash_registry)
@@ -134,7 +143,7 @@ async fn run_task(
         block_in_place(|| should_task_run(task, workspace, since, hash_registry))?;
 
     if !should_run && dependency_outcome == OutcomeSummary::NoChange {
-        tracing::info!(task = %task.task_ref(), "Skipping task");
+        tracing::info!(task = %task.task_ref(), %dependency_outcome, "Skipping task");
         return Ok(TaskOutcome::Skipped);
     }
 
@@ -196,7 +205,25 @@ fn should_task_run(
     match since {
         Some(since) => {
             let project_root = project.root.clone();
-            let should_run = git::have_files_changed(since, project_root.full_path())?;
+            let git_changed =
+                git::files_changed(git::Mode::Feature(since), Some(project_root.full_path()))?;
+
+            let globset = task.inputs.globset();
+
+            let exclude_paths = &task.project.lookup(workspace).path_exclusions;
+            let should_run = git_changed.into_iter().any(|path| {
+                if let Some(globset) = &globset {
+                    let project_relative_path =
+                        path.strip_prefix(project_root.as_subpath()).unwrap();
+
+                    if !globset.is_match(project_relative_path) {
+                        return false;
+                    }
+                }
+                exclude_paths
+                    .iter()
+                    .all(|exclude_path| !path.starts_with(exclude_path.as_subpath()))
+            });
 
             Ok((should_run, None))
         }
@@ -206,11 +233,24 @@ fn should_task_run(
                 .lookup(&task.task_ref())
                 .and_then(|h| h.inputs);
 
-            let should_run = last_hash
-                .as_ref()
-                .zip(new_hash)
-                .map(|(last_hash, new_hash)| *last_hash != new_hash)
-                .unwrap_or(true);
+            let should_run = match (&last_hash, &new_hash) {
+                (Some(last_hash), Some(new_hash)) => {
+                    let should_run = last_hash != new_hash;
+                    tracing::debug!(
+                        "Hashes have {}",
+                        if should_run { "changed" } else { "not changed" }
+                    );
+                    should_run
+                }
+                (None, _) => {
+                    tracing::debug!("No previous hash, so task should run",);
+                    true
+                }
+                (_, None) => {
+                    tracing::debug!("No current hash, so task should run",);
+                    true
+                }
+            };
 
             Ok((should_run, new_hash))
         }

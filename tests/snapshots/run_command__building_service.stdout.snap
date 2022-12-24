@@ -1,0 +1,7 @@
+---
+source: tests/run_command.rs
+expression: "workspace.run([\"run\", \"build\", \"--filter\", \"service\"])"
+---
+library | build | "Building Library"
+service | build | "Building Service"
+
