@@ -1,0 +1,3 @@
+[profile.default]
+# Annoying, but tempfile doesn't seem to reliably create unique dirs?
+retries = 2
