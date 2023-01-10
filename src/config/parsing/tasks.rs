@@ -142,8 +142,6 @@ mod target_selector {
     use camino::Utf8PathBuf;
     use chumsky::prelude::*;
 
-
-
     #[derive(Clone, Debug)]
     pub enum ParsedSelector {
         CurrentProject,

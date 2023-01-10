@@ -1,0 +1,11 @@
+[profile.default]
+# Annoying, but tempfile doesn't seem to reliably create unique dirs?
+retries = 2
+
+[profile.ci]
+retries = 2
+# Print out output for failing tests as soon as they fail, and also at the end
+# of the run (for easy scrollability).
+failure-output = "immediate-final"
+# Do not cancel the test run on the first failure.
+fail-fast = false
