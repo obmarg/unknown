@@ -603,7 +603,7 @@ mod tests {
     #[test]
     fn test_validate_relative_path_doesnt_let_you_escape_via_symlinks() {
         let test_files = TestFiles::new()
-            .with_symlink("sh", "/bin/sh")
+            .with_symlink("sh", "/bin/bash")
             .with_symlink("projects/whatever", "/bin");
 
         let starting_path = test_files.root().subpath("sh").unwrap();
@@ -611,7 +611,7 @@ mod tests {
         assert_matches!(
             starting_path.validate(),
             Err(PathError::PathNotInWorkspace(path)) => {
-                assert_eq!(path, Utf8PathBuf::from("/bin/sh"))
+                assert_eq!(path, Utf8PathBuf::from("/bin/bash"))
             }
         );
 
@@ -620,7 +620,7 @@ mod tests {
         assert_matches!(
             starting_path.validate(),
             Err(PathError::PathNotInWorkspace(path)) => {
-                assert_eq!(path, Utf8PathBuf::from("/bin/sh"))
+                assert_eq!(path, Utf8PathBuf::from("/bin/bash"))
             }
         );
     }

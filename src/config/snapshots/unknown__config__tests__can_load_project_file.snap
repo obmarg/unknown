@@ -25,7 +25,7 @@ Ok(
                 ConfigPath {
                     span: SourceSpan {
                         offset: SourceOffset(
-                            710,
+                            521,
                         ),
                         length: SourceOffset(
                             11,
@@ -36,7 +36,7 @@ Ok(
                 ConfigPath {
                     span: SourceSpan {
                         offset: SourceOffset(
-                            763,
+                            574,
                         ),
                         length: SourceOffset(
                             16,
