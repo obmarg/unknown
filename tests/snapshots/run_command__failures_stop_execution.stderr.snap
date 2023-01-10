@@ -1,0 +1,6 @@
+---
+source: tests/run_command.rs
+expression: stderr
+---
+library | fail | git: 'fail' is not a git command. See 'git --help'.
+

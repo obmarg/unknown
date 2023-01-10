@@ -1,8 +1,13 @@
 use std::collections::HashSet;
 
+use camino::Utf8Path;
 use tabled::{Table, Tabled};
 
-use crate::{config::ValidPath, git, workspace::Workspace};
+use crate::{
+    config::ValidPath,
+    git,
+    workspace::{ProjectInfo, Workspace},
+};
 
 #[derive(clap::Parser)]
 pub struct ChangedOpts {
@@ -29,18 +34,25 @@ pub enum Format {
 }
 
 pub fn run(workspace: Workspace, opts: ChangedOpts) -> miette::Result<()> {
-    let files_changed = git::files_changed(git::Mode::Feature(opts.since))?;
+    let files_changed = git::files_changed(git::Mode::Feature(opts.since), None)?;
 
     let repo_root = git::repo_root().expect("need to find repo root");
     let repo_root = repo_root.as_path();
 
+    if workspace.root_path() != repo_root {
+        return Err(miette::miette!("The workspace must be at the repo root currently (mostly because I'm lazy though, PRs welcome)"));
+    }
+
+    // Note: Possibly some room for optimisation here where we go project-by-project
+    // instead of file-by-file.  Could let us short-circuit things a bit, rather than
+    // needing to compare every file against every project
+
     let projects_changed = files_changed
         .into_iter()
-        .map(|p| repo_root.join(p))
         .flat_map(|file| {
             workspace
                 .projects()
-                .filter(|project| file.starts_with(project.root.full_path()))
+                .filter(|project| project.contains(&file))
                 .collect::<Vec<_>>()
         })
         .collect::<HashSet<_>>();
@@ -52,14 +64,17 @@ pub fn run(workspace: Workspace, opts: ChangedOpts) -> miette::Result<()> {
         .flat_map(|p| graph.walk_project_dependents(p.project_ref()))
         .collect::<HashSet<_>>();
 
-    // TODO: Probably topsort the output.
-    let outputs = projects_affected.into_iter().map(|project_ref| {
-        let project = project_ref.lookup(&workspace);
-        Output {
-            name: project.name.clone(),
-            path: project.root.clone(),
-        }
-    });
+    let mut outputs = projects_affected
+        .into_iter()
+        .map(|project_ref| {
+            let project = project_ref.lookup(&workspace);
+            Output {
+                name: project.name.clone(),
+                path: project.root.clone(),
+            }
+        })
+        .collect::<Vec<_>>();
+    outputs.sort_by(|lhs, rhs| lhs.path.cmp(&rhs.path));
 
     match opts.format.actual_format() {
         ActualFormat::Plain => {
@@ -71,7 +86,6 @@ pub fn run(workspace: Workspace, opts: ChangedOpts) -> miette::Result<()> {
             println!("{}", Table::new(outputs));
         }
         ActualFormat::Json => {
-            let outputs = outputs.collect::<Vec<_>>();
             print!("{}", serde_json::to_string(&outputs).unwrap())
         }
         ActualFormat::NdJson => {
@@ -136,5 +150,16 @@ impl std::str::FromStr for Format {
             "ndjson" => Format::NdJson,
             _ => miette::bail!("Unknown format: {s}.  Expected one of auto, plain, json, ndjson"),
         })
+    }
+}
+
+impl ProjectInfo {
+    fn contains(&self, path: &Utf8Path) -> bool {
+        path.starts_with(self.root.as_subpath())
+            && (self.path_exclusions.is_empty()
+                || !self
+                    .path_exclusions
+                    .iter()
+                    .any(|exclusion| path.starts_with(exclusion.as_subpath())))
     }
 }

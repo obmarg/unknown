@@ -1,0 +1,6 @@
+---
+source: tests/run_command.rs
+expression: stdout
+---
+library | build | "Building Library"
+

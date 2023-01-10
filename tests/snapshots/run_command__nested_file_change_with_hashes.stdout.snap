@@ -1,0 +1,6 @@
+---
+source: tests/run_command.rs
+expression: "workspace.run([\"run\", \"build\", \"--filter\", \"nested,service\"])"
+---
+ nested | build | "Building Nested"
+

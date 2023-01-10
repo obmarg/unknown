@@ -1,0 +1,8 @@
+---
+source: tests/run_command.rs
+expression: "workspace.run([\"run\", \"build\"])"
+---
+       library | build | "Building Library"
+nested-service | build | "Building Nested"
+       service | build | "Building Service"
+
