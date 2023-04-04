@@ -1,8 +1,9 @@
 use std::{fmt, sync::Arc};
 
 use miette::MietteSpanContents;
+use serde::Serialize;
 
-#[derive(Clone)]
+#[derive(Clone, Serialize)]
 pub struct ConfigSource {
     inner: Arc<Inner>,
 }
@@ -15,6 +16,7 @@ impl std::fmt::Debug for ConfigSource {
     }
 }
 
+#[derive(Serialize)]
 struct Inner {
     filename: String,
     code: String,

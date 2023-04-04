@@ -2,6 +2,7 @@ use camino::{Utf8Path, Utf8PathBuf};
 use knuffel::{
     ast::Literal, decode::Kind, errors::DecodeError, span::Spanned, traits::ErrorSpan, DecodeScalar,
 };
+use serde::Serialize;
 
 #[derive(Clone, Debug)]
 pub struct ConfigPath {
@@ -120,7 +121,7 @@ where
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize)]
 pub struct WorkspaceRoot(Utf8PathBuf);
 
 impl AsRef<Utf8Path> for WorkspaceRoot {

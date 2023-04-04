@@ -1,3 +1,4 @@
+use insta::{dynamic_redaction, Settings};
 use miette::{GraphicalReportHandler, GraphicalTheme};
 
 use crate::test_files::TestFiles;
@@ -6,7 +7,18 @@ use super::*;
 
 #[test]
 fn test_load_config_from_cwd() {
-    insta::assert_debug_snapshot!(load_config_from_path("sample-monorepo/".into()).unwrap())
+    let mut settings = Settings::clone_current();
+    settings.add_redaction(
+        ".**.workspace_root",
+        dynamic_redaction(|value, _| {
+            assert_eq!(value.as_str().unwrap().contains("sample-monorepo/"), true);
+            "sample-monorepo/"
+        }),
+    );
+
+    settings.bind(|| {
+        insta::assert_json_snapshot!(load_config_from_path("sample-monorepo/".into()).unwrap())
+    });
 }
 
 #[test]

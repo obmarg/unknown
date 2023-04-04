@@ -2,265 +2,277 @@
 source: src/workspace/tests.rs
 expression: workspace
 ---
-Workspace {
-    info: WorkspaceInfo {
-        name: "my-workspace",
-        project_paths: [
-            Glob {
-                glob: "**",
-                re: "(?-u)^.*$",
-                opts: GlobOptions {
-                    case_insensitive: false,
-                    literal_separator: false,
-                    backslash_escape: true,
-                },
-                tokens: Tokens(
-                    [
-                        RecursivePrefix,
-                    ],
-                ),
-            },
-        ],
-        root_path: WorkspaceRoot(
-            "/Users/graeme/src/unknown/src/workspace/test-data/",
-        ),
-    },
-    project_map: {
-        ProjectRef(
-            ValidPath {
-                workspace_root: WorkspaceRoot(
-                    "/Users/graeme/src/unknown/src/workspace/test-data/",
-                ),
-                subpath: "projects/a-lib",
-            },
-        ): ProjectInfo {
-            name: "a-lib",
-            dependencies: [],
-            root: ValidPath {
-                workspace_root: WorkspaceRoot(
-                    "/Users/graeme/src/unknown/src/workspace/test-data/",
-                ),
-                subpath: "projects/a-lib",
-            },
-        },
-        ProjectRef(
-            ValidPath {
-                workspace_root: WorkspaceRoot(
-                    "/Users/graeme/src/unknown/src/workspace/test-data/",
-                ),
-                subpath: "projects/a-service",
-            },
-        ): ProjectInfo {
-            name: "a-service",
-            dependencies: [
-                ProjectRef(
-                    ValidPath {
-                        workspace_root: WorkspaceRoot(
-                            "/Users/graeme/src/unknown/src/workspace/test-data/",
-                        ),
-                        subpath: "projects/a-lib",
-                    },
-                ),
-            ],
-            root: ValidPath {
-                workspace_root: WorkspaceRoot(
-                    "/Users/graeme/src/unknown/src/workspace/test-data/",
-                ),
-                subpath: "projects/a-service",
-            },
-        },
-    },
-    task_map: {
-        TaskRef(
-            ProjectRef(
-                ValidPath {
-                    workspace_root: WorkspaceRoot(
-                        "/Users/graeme/src/unknown/src/workspace/test-data/",
-                    ),
-                    subpath: "projects/a-lib",
-                },
-            ),
-            "build",
-        ): TaskInfo {
-            project: ProjectRef(
-                ValidPath {
-                    workspace_root: WorkspaceRoot(
-                        "/Users/graeme/src/unknown/src/workspace/test-data/",
-                    ),
-                    subpath: "projects/a-lib",
-                },
-            ),
-            project_name: "a-lib",
-            name: "build",
-            commands: [
-                "echo \"build-a-lib\"",
-            ],
-            inputs: TaskInputs {
-                paths: [],
-                env_vars: [],
-                commands: [],
-            },
-        },
-        TaskRef(
-            ProjectRef(
-                ValidPath {
-                    workspace_root: WorkspaceRoot(
-                        "/Users/graeme/src/unknown/src/workspace/test-data/",
-                    ),
-                    subpath: "projects/a-lib",
-                },
-            ),
-            "hello",
-        ): TaskInfo {
-            project: ProjectRef(
-                ValidPath {
-                    workspace_root: WorkspaceRoot(
-                        "/Users/graeme/src/unknown/src/workspace/test-data/",
-                    ),
-                    subpath: "projects/a-lib",
-                },
-            ),
-            project_name: "a-lib",
-            name: "hello",
-            commands: [
-                "echo \"hello\"",
-            ],
-            inputs: TaskInputs {
-                paths: [],
-                env_vars: [],
-                commands: [],
-            },
-        },
-        TaskRef(
-            ProjectRef(
-                ValidPath {
-                    workspace_root: WorkspaceRoot(
-                        "/Users/graeme/src/unknown/src/workspace/test-data/",
-                    ),
-                    subpath: "projects/a-service",
-                },
-            ),
-            "build",
-        ): TaskInfo {
-            project: ProjectRef(
-                ValidPath {
-                    workspace_root: WorkspaceRoot(
-                        "/Users/graeme/src/unknown/src/workspace/test-data/",
-                    ),
-                    subpath: "projects/a-service",
-                },
-            ),
-            project_name: "a-service",
-            name: "build",
-            commands: [
-                "echo \"build-a-service\"",
-            ],
-            inputs: TaskInputs {
-                paths: [],
-                env_vars: [],
-                commands: [],
-            },
-        },
-        TaskRef(
-            ProjectRef(
-                ValidPath {
-                    workspace_root: WorkspaceRoot(
-                        "/Users/graeme/src/unknown/src/workspace/test-data/",
-                    ),
-                    subpath: "projects/a-service",
-                },
-            ),
-            "bye",
-        ): TaskInfo {
-            project: ProjectRef(
-                ValidPath {
-                    workspace_root: WorkspaceRoot(
-                        "/Users/graeme/src/unknown/src/workspace/test-data/",
-                    ),
-                    subpath: "projects/a-service",
-                },
-            ),
-            project_name: "a-service",
-            name: "bye",
-            commands: [
-                "echo \"bye\"",
-            ],
-            inputs: TaskInputs {
-                paths: [],
-                env_vars: [],
-                commands: [],
-            },
-        },
-    },
-    task_requirements: [
-        (
-            TaskRef(
-                ProjectRef(
-                    ValidPath {
-                        workspace_root: WorkspaceRoot(
-                            "/Users/graeme/src/unknown/src/workspace/test-data/",
-                        ),
-                        subpath: "projects/a-service",
-                    },
-                ),
-                "build",
-            ),
-            [
-                TaskRef(
-                    ProjectRef(
-                        ValidPath {
-                            workspace_root: WorkspaceRoot(
-                                "/Users/graeme/src/unknown/src/workspace/test-data/",
-                            ),
-                            subpath: "projects/a-lib",
-                        },
-                    ),
-                    "build",
-                ),
-            ],
-        ),
-        (
-            TaskRef(
-                ProjectRef(
-                    ValidPath {
-                        workspace_root: WorkspaceRoot(
-                            "/Users/graeme/src/unknown/src/workspace/test-data/",
-                        ),
-                        subpath: "projects/a-service",
-                    },
-                ),
-                "bye",
-            ),
-            [],
-        ),
-        (
-            TaskRef(
-                ProjectRef(
-                    ValidPath {
-                        workspace_root: WorkspaceRoot(
-                            "/Users/graeme/src/unknown/src/workspace/test-data/",
-                        ),
-                        subpath: "projects/a-lib",
-                    },
-                ),
-                "build",
-            ),
-            [],
-        ),
-        (
-            TaskRef(
-                ProjectRef(
-                    ValidPath {
-                        workspace_root: WorkspaceRoot(
-                            "/Users/graeme/src/unknown/src/workspace/test-data/",
-                        ),
-                        subpath: "projects/a-lib",
-                    },
-                ),
-                "hello",
-            ),
-            [],
-        ),
+{
+  "info": {
+    "name": "my-workspace",
+    "project_paths": [
+      "**"
     ],
-    ..
+    "root_path": "src/workspace/test-data/"
+  },
+  "graph_": {
+    "graph": {
+      "nodes": [
+        "WorkspaceRoot",
+        {
+          "Project": "projects/a-lib"
+        },
+        {
+          "Project": "projects/a-service"
+        },
+        {
+          "Task": [
+            "projects/a-lib",
+            "build"
+          ]
+        },
+        {
+          "Task": [
+            "projects/a-lib",
+            "hello"
+          ]
+        },
+        {
+          "Task": [
+            "projects/a-service",
+            "build"
+          ]
+        },
+        {
+          "Task": [
+            "projects/a-service",
+            "bye"
+          ]
+        }
+      ],
+      "node_holes": [],
+      "edge_property": "directed",
+      "edges": [
+        [
+          0,
+          1,
+          "HasProject"
+        ],
+        [
+          0,
+          2,
+          "HasProject"
+        ],
+        [
+          1,
+          2,
+          "ProjectDependsOn"
+        ],
+        [
+          1,
+          3,
+          "HasTask"
+        ],
+        [
+          1,
+          4,
+          "HasTask"
+        ],
+        [
+          2,
+          1,
+          "ProjectDependedOnBy"
+        ],
+        [
+          2,
+          5,
+          "HasTask"
+        ],
+        [
+          2,
+          6,
+          "HasTask"
+        ],
+        [
+          3,
+          5,
+          "TaskDependsOn"
+        ],
+        [
+          5,
+          3,
+          "TaskDependedOnBy"
+        ]
+      ]
+    },
+    "project_indices": [
+      [
+        "projects/a-lib",
+        2
+      ],
+      [
+        "projects/a-service",
+        1
+      ]
+    ],
+    "task_indices": [
+      [
+        [
+          "projects/a-lib",
+          "build"
+        ],
+        5
+      ],
+      [
+        [
+          "projects/a-lib",
+          "hello"
+        ],
+        6
+      ],
+      [
+        [
+          "projects/a-service",
+          "build"
+        ],
+        3
+      ],
+      [
+        [
+          "projects/a-service",
+          "bye"
+        ],
+        4
+      ]
+    ],
+    "root_index": 0
+  },
+  "project_map": [
+    [
+      "projects/a-lib",
+      {
+        "name": "a-lib",
+        "dependencies": [],
+        "root": "projects/a-lib"
+      }
+    ],
+    [
+      "projects/a-service",
+      {
+        "name": "a-service",
+        "dependencies": [
+          "projects/a-lib"
+        ],
+        "root": "projects/a-service"
+      }
+    ]
+  ],
+  "task_map": [
+    [
+      [
+        "projects/a-lib",
+        "build"
+      ],
+      {
+        "project": "projects/a-lib",
+        "project_name": "a-lib",
+        "name": "build",
+        "commands": [
+          "echo \"build-a-lib\""
+        ],
+        "inputs": {
+          "paths": [],
+          "env_vars": [],
+          "commands": []
+        }
+      }
+    ],
+    [
+      [
+        "projects/a-lib",
+        "hello"
+      ],
+      {
+        "project": "projects/a-lib",
+        "project_name": "a-lib",
+        "name": "hello",
+        "commands": [
+          "echo \"hello\""
+        ],
+        "inputs": {
+          "paths": [],
+          "env_vars": [],
+          "commands": []
+        }
+      }
+    ],
+    [
+      [
+        "projects/a-service",
+        "build"
+      ],
+      {
+        "project": "projects/a-service",
+        "project_name": "a-service",
+        "name": "build",
+        "commands": [
+          "echo \"build-a-service\""
+        ],
+        "inputs": {
+          "paths": [],
+          "env_vars": [],
+          "commands": []
+        }
+      }
+    ],
+    [
+      [
+        "projects/a-service",
+        "bye"
+      ],
+      {
+        "project": "projects/a-service",
+        "project_name": "a-service",
+        "name": "bye",
+        "commands": [
+          "echo \"bye\""
+        ],
+        "inputs": {
+          "paths": [],
+          "env_vars": [],
+          "commands": []
+        }
+      }
+    ]
+  ],
+  "task_requirements": [
+    [
+      [
+        "projects/a-service",
+        "build"
+      ],
+      [
+        [
+          "projects/a-lib",
+          "build"
+        ]
+      ]
+    ],
+    [
+      [
+        "projects/a-service",
+        "bye"
+      ],
+      []
+    ],
+    [
+      [
+        "projects/a-lib",
+        "build"
+      ],
+      []
+    ],
+    [
+      [
+        "projects/a-lib",
+        "hello"
+      ],
+      []
+    ]
+  ]
 }

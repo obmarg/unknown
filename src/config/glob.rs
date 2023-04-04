@@ -1,8 +1,9 @@
 use knuffel::{
     ast::Literal, decode::Kind, errors::DecodeError, span::Spanned, traits::ErrorSpan, DecodeScalar,
 };
+use serde::Serialize;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Glob(globset::Glob);
 
 impl Glob {

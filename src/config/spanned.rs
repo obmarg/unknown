@@ -1,10 +1,12 @@
 use std::{fmt, ops::Deref};
 
 use knuffel::traits::ErrorSpan;
+use serde::Serialize;
 
-#[derive(Clone)]
+#[derive(Clone, Serialize)]
 pub struct Spanned<T> {
     inner: T,
+    #[serde(skip)]
     pub span: miette::SourceSpan,
 }
 

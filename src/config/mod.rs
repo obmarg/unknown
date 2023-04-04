@@ -6,6 +6,8 @@ mod paths;
 mod spanned;
 mod validated;
 
+use serde::Serialize;
+
 use self::paths::ConfigPath;
 pub use self::{
     config_source::ConfigSource,
@@ -35,7 +37,7 @@ impl UnvalidatedConfig {
 #[error("Encountered some errors when validating config files")]
 struct ConfigValidationError(#[related] Vec<miette::Report>);
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct ValidConfig {
     pub workspace_file: WorkspaceFile,
     pub project_files: Vec<ValidProjectFile>,
@@ -48,7 +50,7 @@ pub struct UnvalidatedWorkspaceFile {
     source: ConfigSource,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct WorkspaceFile {
     pub workspace_root: WorkspaceRoot,
     pub config: validated::WorkspaceDefinition,
@@ -68,7 +70,7 @@ impl UnvalidatedProjectFile {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct ValidProjectFile {
     pub project_root: ValidPath,
     pub config: validated::ProjectDefinition,

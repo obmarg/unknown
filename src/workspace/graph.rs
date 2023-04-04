@@ -5,14 +5,20 @@ use petgraph::{
     stable_graph::NodeIndex,
     visit::{DfsPostOrder, EdgeFiltered, IntoNeighbors, Walker},
 };
+use serde::Serialize;
+use serde_with::serde_as;
 
 use super::{ProjectInfo, ProjectRef, TaskInfo, TaskRef};
 
 type Graph = petgraph::Graph<WorkspaceNode, WorkspaceEdge>;
 
+#[serde_as]
+#[derive(Serialize)]
 pub struct WorkspaceGraph {
     graph: Graph,
+    #[serde_as(as = "Vec<(_, _)>")]
     project_indices: HashMap<ProjectRef, NodeIndex>,
+    #[serde_as(as = "Vec<(_, _)>")]
     task_indices: HashMap<TaskRef, NodeIndex>,
     root_index: NodeIndex,
 }
@@ -238,14 +244,14 @@ impl ProjectInfo {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub enum WorkspaceNode {
     WorkspaceRoot,
     Project(ProjectRef),
     Task(TaskRef),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub enum WorkspaceEdge {
     HasProject,
     ProjectDependsOn,
