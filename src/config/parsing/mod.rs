@@ -93,4 +93,3 @@ pub fn parse_task_file(path: &Utf8Path, contents: &str) -> Result<TaskBlock, Par
 
     Ok(config)
 }
-

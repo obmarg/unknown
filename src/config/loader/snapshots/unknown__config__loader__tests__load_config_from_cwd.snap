@@ -2,153 +2,141 @@
 source: src/config/loader/tests.rs
 expression: "load_config_from_path(\"sample-monorepo/\".into()).unwrap()"
 ---
-ValidConfig {
-    workspace_file: WorkspaceFile {
-        workspace_root: WorkspaceRoot(
-            "/Users/graeme/src/unknown/sample-monorepo/",
-        ),
-        config: WorkspaceDefinition {
-            name: "my-workspace",
-            project_paths: [
-                Glob(
-                    Glob {
-                        glob: "**",
-                        re: "(?-u)^.*$",
-                        opts: GlobOptions {
-                            case_insensitive: false,
-                            literal_separator: false,
-                            backslash_escape: true,
-                        },
-                        tokens: Tokens(
-                            [
-                                RecursivePrefix,
-                            ],
-                        ),
-                    },
-                ),
-            ],
-        },
-        source: ConfigSource {
-            filename: "workspace.kdl",
-            ..
-        },
+{
+  "workspace_file": {
+    "workspace_root": "sample-monorepo/",
+    "config": {
+      "name": "my-workspace",
+      "project_paths": [
+        "**"
+      ]
     },
-    project_files: [
-        ValidProjectFile {
-            project_root: ValidPath {
-                workspace_root: WorkspaceRoot(
-                    "/Users/graeme/src/unknown/sample-monorepo/",
-                ),
-                subpath: "projects/a-service",
+    "source": {
+      "inner": {
+        "filename": "workspace.kdl",
+        "code": "name \"my-workspace\"\n\nproject_path \"**\""
+      }
+    }
+  },
+  "project_files": [
+    {
+      "project_root": "projects/a-service",
+      "config": {
+        "project": "a-service",
+        "dependencies": [
+          {
+            "inner": "projects/a-lib"
+          }
+        ],
+        "tasks": {
+          "imports": [],
+          "tasks": [
+            {
+              "name": "build",
+              "commands": [
+                "echo \"build-a-service\""
+              ],
+              "requires": [
+                {
+                  "task": {
+                    "inner": "build"
+                  },
+                  "target": {
+                    "inner": "DependenciesOfCurrent"
+                  }
+                }
+              ],
+              "input_blocks": [],
+              "source": {
+                "inner": {
+                  "filename": "projects/a-service/project.kdl",
+                  "code": "project \"a-service\"\n\n// Guess dependencies could be also be a block?\ndependencies {\n    project \"../a-lib\"\n}\n\ntasks {\n    import \"bye.nabs\"\n\n    task \"build\" {\n        requires \"build\" in=\"^self\"\n        command r#\"echo \"build-a-service\"\"#\n    }\n}\n"
+                }
+              }
             },
-            config: ProjectDefinition {
-                project: "a-service",
-                dependencies: [
-                    ValidPath {
-                        workspace_root: WorkspaceRoot(
-                            "/Users/graeme/src/unknown/sample-monorepo/",
-                        ),
-                        subpath: "projects/a-lib",
-                    },
-                ],
-                tasks: TaskBlock {
-                    imports: [],
-                    tasks: [
-                        TaskDefinition {
-                            name: "build",
-                            commands: [
-                                "echo \"build-a-service\"",
-                            ],
-                            requires: [
-                                TaskRequires {
-                                    task: "build",
-                                    target: Some(
-                                        DependenciesOfCurrent,
-                                    ),
-                                },
-                            ],
-                            input_blocks: [],
-                            source: ConfigSource {
-                                filename: "projects/a-service/project.kdl",
-                                ..
-                            },
-                        },
-                        TaskDefinition {
-                            name: "bye",
-                            commands: [
-                                "echo \"bye\"",
-                            ],
-                            requires: [],
-                            input_blocks: [],
-                            source: ConfigSource {
-                                filename: "projects/a-service/bye.nabs",
-                                ..
-                            },
-                        },
-                    ],
-                },
+            {
+              "name": "bye",
+              "commands": [
+                "echo \"bye\""
+              ],
+              "requires": [],
+              "input_blocks": [],
+              "source": {
+                "inner": {
+                  "filename": "projects/a-service/bye.nabs",
+                  "code": "task \"bye\" {\n    command r#\"echo \"bye\"\"#\n}"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "source": {
+        "inner": {
+          "filename": "projects/a-service/project.kdl",
+          "code": "project \"a-service\"\n\n// Guess dependencies could be also be a block?\ndependencies {\n    project \"../a-lib\"\n}\n\ntasks {\n    import \"bye.nabs\"\n\n    task \"build\" {\n        requires \"build\" in=\"^self\"\n        command r#\"echo \"build-a-service\"\"#\n    }\n}\n"
+        }
+      }
+    },
+    {
+      "project_root": "projects/a-lib",
+      "config": {
+        "project": "a-lib",
+        "dependencies": [],
+        "tasks": {
+          "imports": [],
+          "tasks": [
+            {
+              "name": "build",
+              "commands": [
+                "echo \"build-a-lib\""
+              ],
+              "requires": [],
+              "input_blocks": [],
+              "source": {
+                "inner": {
+                  "filename": "projects/a-lib/project.kdl",
+                  "code": "project \"a-lib\"\n\ntasks {\n    import \"/tasks/hello.nabs\"\n\n    task \"build\" {\n        command r#\"echo \"build-a-lib\"\"#\n    }\n}\n"
+                }
+              }
             },
-            source: ConfigSource {
-                filename: "projects/a-service/project.kdl",
-                ..
+            {
+              "name": "hello",
+              "commands": [
+                "echo \"hello\""
+              ],
+              "requires": [],
+              "input_blocks": [],
+              "source": {
+                "inner": {
+                  "filename": "tasks/hello.nabs",
+                  "code": "import \"hello2.nabs\"\n\ntask \"hello\" {\n    command r#\"echo \"hello\"\"#\n}"
+                }
+              }
             },
-        },
-        ValidProjectFile {
-            project_root: ValidPath {
-                workspace_root: WorkspaceRoot(
-                    "/Users/graeme/src/unknown/sample-monorepo/",
-                ),
-                subpath: "projects/a-lib",
-            },
-            config: ProjectDefinition {
-                project: "a-lib",
-                dependencies: [],
-                tasks: TaskBlock {
-                    imports: [],
-                    tasks: [
-                        TaskDefinition {
-                            name: "build",
-                            commands: [
-                                "echo \"build-a-lib\"",
-                            ],
-                            requires: [],
-                            input_blocks: [],
-                            source: ConfigSource {
-                                filename: "projects/a-lib/project.kdl",
-                                ..
-                            },
-                        },
-                        TaskDefinition {
-                            name: "hello",
-                            commands: [
-                                "echo \"hello\"",
-                            ],
-                            requires: [],
-                            input_blocks: [],
-                            source: ConfigSource {
-                                filename: "tasks/hello.nabs",
-                                ..
-                            },
-                        },
-                        TaskDefinition {
-                            name: "hello2",
-                            commands: [
-                                "echo \"hello\"",
-                            ],
-                            requires: [],
-                            input_blocks: [],
-                            source: ConfigSource {
-                                filename: "tasks/hello2.nabs",
-                                ..
-                            },
-                        },
-                    ],
-                },
-            },
-            source: ConfigSource {
-                filename: "projects/a-lib/project.kdl",
-                ..
-            },
-        },
-    ],
+            {
+              "name": "hello2",
+              "commands": [
+                "echo \"hello\""
+              ],
+              "requires": [],
+              "input_blocks": [],
+              "source": {
+                "inner": {
+                  "filename": "tasks/hello2.nabs",
+                  "code": "task \"hello2\" {\n    command r#\"echo \"hello\"\"#\n}"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "source": {
+        "inner": {
+          "filename": "projects/a-lib/project.kdl",
+          "code": "project \"a-lib\"\n\ntasks {\n    import \"/tasks/hello.nabs\"\n\n    task \"build\" {\n        command r#\"echo \"build-a-lib\"\"#\n    }\n}\n"
+        }
+      }
+    }
+  ]
 }

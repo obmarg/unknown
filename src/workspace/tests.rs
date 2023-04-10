@@ -1,3 +1,4 @@
+use insta::{dynamic_redaction, Settings};
 use similar_asserts::assert_eq;
 
 use crate::config::load_config_from_path;
@@ -9,9 +10,28 @@ fn snapshot_sample_monorepo() {
     let config = load_config_from_path("src/workspace/test-data/".into()).unwrap();
 
     let mut workspace = Workspace::new(config.workspace_file);
+
     workspace.add_projects(config.project_files).unwrap();
 
-    insta::assert_debug_snapshot!(workspace)
+    let mut settings = Settings::clone_current();
+    settings.add_redaction(
+        ".**.root_path",
+        dynamic_redaction(|value, _| {
+            // assert_eq!(path.to_string(), ".info.root_path");
+            assert_eq!(
+                value.as_str().unwrap().contains("src/workspace/test-data/"),
+                true
+            );
+            "src/workspace/test-data/"
+        }),
+    );
+    settings.set_sort_maps(true);
+    settings.sort_selector(".**.task_map");
+    settings.sort_selector(".**.project_map");
+
+    settings.bind(
+        || insta::assert_json_snapshot!(workspace, {".**.nodes" => insta::sorted_redaction(), ".**.edges" => insta::sorted_redaction()}),
+    )
 }
 
 #[test]

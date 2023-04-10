@@ -1,6 +1,8 @@
 use std::collections::{HashMap, HashSet};
 
 use miette::SourceSpan;
+use serde::{Deserialize, Serialize, Serializer};
+use serde_with::serde_as;
 
 use crate::{
     config::{
@@ -19,10 +21,15 @@ mod tests;
 use camino::Utf8Path;
 use globset::Glob;
 
+#[serde_as]
+#[derive(Serialize)]
 pub struct Workspace {
     pub info: WorkspaceInfo,
+    #[serde(skip)]
     graph_: WorkspaceGraph,
+    #[serde_as(as = "Vec<(_, _)>")]
     project_map: HashMap<ProjectRef, ProjectInfo>,
+    #[serde_as(as = "Vec<(_, _)>")]
     task_map: HashMap<TaskRef, TaskInfo>,
     task_requirements: Vec<(TaskRef, Vec<TaskRef>)>,
 }
@@ -50,7 +57,7 @@ impl std::fmt::Debug for Workspace {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct WorkspaceInfo {
     #[allow(unused)]
     name: String,
@@ -231,7 +238,7 @@ impl TaskRef {
     }
 }
 
-#[derive(Debug, Hash, PartialEq, Eq)]
+#[derive(Debug, Hash, PartialEq, Eq, Serialize)]
 pub struct ProjectInfo {
     pub name: String,
     pub dependencies: Vec<ProjectRef>,
@@ -268,7 +275,16 @@ impl ProjectRef {
     }
 }
 
-#[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
+impl Serialize for ProjectRef {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(self.0.as_subpath().as_str())
+    }
+}
+
+#[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize)]
 pub struct TaskRef(ProjectRef, String);
 
 impl TaskRef {
@@ -287,7 +303,7 @@ impl std::fmt::Display for TaskRef {
     }
 }
 
-#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq, Serialize)]
 pub struct TaskInfo {
     pub project: ProjectRef,
     pub project_name: String,
@@ -461,7 +477,7 @@ fn resolve_requires(
     Ok(tasks)
 }
 
-#[derive(Clone, Debug, Default, Hash, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, Hash, PartialEq, Eq, Deserialize, Serialize)]
 pub struct TaskInputs {
     pub paths: Vec<Glob>,
     pub env_vars: Vec<String>,
