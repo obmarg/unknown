@@ -10,6 +10,7 @@ fn snapshot_sample_monorepo() {
     let config = load_config_from_path("src/workspace/test-data/".into()).unwrap();
 
     let mut workspace = Workspace::new(config.workspace_file);
+
     workspace.add_projects(config.project_files).unwrap();
 
     let mut settings = Settings::clone_current();
@@ -25,10 +26,6 @@ fn snapshot_sample_monorepo() {
         }),
     );
     settings.set_sort_maps(true);
-    settings.sort_selector(".**.project_indices");
-    settings.sort_selector(".**.task_indices");
-    // settings.sort_selector(".**.nodes");
-    settings.sort_selector(".**.edges");
     settings.sort_selector(".**.task_map");
     settings.sort_selector(".**.project_map");
 

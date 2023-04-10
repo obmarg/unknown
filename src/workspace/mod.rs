@@ -25,6 +25,7 @@ use globset::Glob;
 #[derive(Serialize)]
 pub struct Workspace {
     pub info: WorkspaceInfo,
+    #[serde(skip)]
     graph_: WorkspaceGraph,
     #[serde_as(as = "Vec<(_, _)>")]
     project_map: HashMap<ProjectRef, ProjectInfo>,
